@@ -236,15 +236,15 @@ StatusCode RPVMCTruthHists::execute()
 			   	
 				if ((fabs(dauX-decayX)<10.) && (fabs(dauY-decayY)<10.) && (fabs(dauZ-decayZ)<10.)) 
 		  		{
-					std::cout<<" particle from DV? "<<(*partItr2)->pdg_id()<<" "
-						<<decayX<<" "<<dauX<<" "<<(*partItr2)->status()<<std::endl;
+					ATH_MSG_DEBUG(" particle from DV? "<<(*partItr2)->pdg_id()<<" "
+						<<decayX<<" "<<dauX<<" "<<(*partItr2)->status());
 					m_pdgIdHist->Fill((*partItr2)->pdg_id());
 					
 					if ((*partItr2)->end_vertex()!=0) 
 					{
-						std::cout<<" long-lived particle from DV? "<<(*partItr2)->pdg_id()<<" "
+                        ATH_MSG_DEBUG(" long-lived particle from DV? "<<(*partItr2)->pdg_id()<<" "
 							<<decayX<<" "<<dauX<<" "<<(*partItr2)->end_vertex()->position().x()<<" "
-							<<(*partItr2)->status()<<std::endl;
+							<<(*partItr2)->status());
 					}
 					m_decayX0wrtDVHist->Fill(dauX - decayX);
 					m_decayY0wrtDVHist->Fill(dauY - decayY);
