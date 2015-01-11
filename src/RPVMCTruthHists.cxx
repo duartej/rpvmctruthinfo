@@ -8,6 +8,12 @@
 //#include "GaudiKernel/ITHistSvc.h"
 #include "HepMC/GenEvent.h"
 #include "GeneratorObjects/McEventCollection.h"
+
+#include "TrigDecisionTool/FeatureContainer.h"
+#include "TrigDecisionTool/Feature.h"
+#include "TrigSteeringEvent/TrigRoiDescriptor.h"
+
+
 #include "TH1F.h"
 #include "TH2F.h"
 
@@ -36,19 +42,25 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
   	m_metHist(0),
   	m_elecPtHist(0),
   	m_muonPtHist(0),
-  	m_nTrk4mmHist(0)
+  	m_nTrk4mmHist(0),
+    m_trigDec("Trig::TrigDecisionTool/TrigDecisionTool"),
+    m_map_triggers(0)
 {
-  	declareProperty ("LLP_PDGID", m_LLP_PDGID=1000022);
-  	declareProperty ("MCCollection", m_mcCollName="GEN_EVENT");
-  	declareProperty ("OutputStreamName", m_streamName="StreamBoostEta");
+  	declareProperty("LLP_PDGID", m_LLP_PDGID=1000022);
+  	declareProperty("MCCollection", m_mcCollName="GEN_EVENT");
+  	declareProperty("OutputStreamName", m_streamName="StreamBoostEta");
+    
+    std::vector<std::string> _k;
+    _k.push_back("HLT_.*");
+    declareProperty("TriggerChains", m_triggergroups=_k);
 }
 
 /// --------------------------------------------------------------------
 /// Initialize
 StatusCode RPVMCTruthHists::initialize() 
 {
-  	msg(MSG::DEBUG) << "RPVMCTruthHists::initialize" << endreq;
-	
+  	ATH_MSG_DEBUG("RPVMCTruthHists::initialize");
+
     StatusCode sc = m_tHistSvc.retrieve();
     if ( sc.isFailure() ) 
 	{
@@ -130,6 +142,22 @@ StatusCode RPVMCTruthHists::initialize()
     m_nTrk4mmHist = new TH1F("nTrk4mm","; nTrk within 4mm of DV",50,-0.5,49.5);
     sc = m_tHistSvc->regHist("/"+m_streamName+"/nTrk4mm", m_nTrk4mmHist);
     if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
+
+    //--- The triggers to be checked
+    sc = m_trigDec.retrieve();
+    if( sc.isFailure() ) 
+	{
+  		ATH_MSG_ERROR( "Unable to retrieve pointer to TrigDecisionTool" );
+  		return sc;
+    }
+    // --- Extracting the list of triggers from the group-chain user defined
+    for(auto & trgn: m_triggergroups)
+    {
+        for(auto & trgnames: m_trigDec->getListOfTriggers(trgn))
+        {
+            m_triggerNames.push_back(trgnames);
+        }
+    }
   
     return StatusCode::SUCCESS;
 }
@@ -139,14 +167,16 @@ StatusCode RPVMCTruthHists::initialize()
 
 StatusCode RPVMCTruthHists::execute() 
 {
-  	msg(MSG::DEBUG)<<"in RPVMCTruthHists::execute()"<<endreq;
+    ATH_MSG_DEBUG( "in RPVMCTruthHists::execute()");
+    
+    printTriggerInfo();
 
     const McEventCollection* mcColl(0);
     StatusCode sc = evtStore()->retrieve(mcColl, m_mcCollName);
     if (sc.isFailure()) 
 	{
-      msg(MSG::ERROR)<<"unable to retrieve MC coll"<<endreq;
-      return StatusCode::FAILURE;
+        ATH_MSG_ERROR("unable to retrieve MC coll");
+        return StatusCode::FAILURE;
     }
     
     McEventCollection::const_iterator evtItr = mcColl->begin();
@@ -234,10 +264,10 @@ StatusCode RPVMCTruthHists::execute()
 					
 		  		}
 			   	
-				if ((fabs(dauX-decayX)<10.) && (fabs(dauY-decayY)<10.) && (fabs(dauZ-decayZ)<10.)) 
+				if((fabs(dauX-decayX)<10.) && (fabs(dauY-decayY)<10.) && (fabs(dauZ-decayZ)<10.)) 
 		  		{
-					ATH_MSG_DEBUG(" particle from DV? "<<(*partItr2)->pdg_id()<<" "
-						<<decayX<<" "<<dauX<<" "<<(*partItr2)->status());
+					ATH_MSG_DEBUG(" " << (*partItr2)->pdg_id() << "-particle from DV? "
+                            <<(*partItr2)->pdg_id()<<" "<<decayX<<" "<<dauX<<" "<<(*partItr2)->status());
 					m_pdgIdHist->Fill((*partItr2)->pdg_id());
 					
 					if ((*partItr2)->end_vertex()!=0) 
@@ -267,4 +297,43 @@ StatusCode RPVMCTruthHists::finalize()
 {
   	return StatusCode::SUCCESS;
 }
+
+void RPVMCTruthHists::printTriggerInfo()
+{
+    /*if( msgLvl() > MSG::DEBUG )
+    {
+        return;
+    } */
+    
+    ATH_MSG_DEBUG("Trigger Decision Info:: Trigger Chain passed?");
+    for(auto & trgname: m_triggerNames)
+    {
+        const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(trgname);
+        ATH_MSG_DEBUG(" '" << trgname << "': " << chgrp->isPassed() );
+        ATH_MSG_DEBUG("  ++ List of Trigger Elements:");
+        for(auto & telist: chgrp->getListOfTriggerElements())
+        {
+            for(auto & tename: telist)
+            {
+                ATH_MSG_DEBUG("   '"<< tename << "'");
+            }
+        }
+        ATH_MSG_DEBUG("  -- Trig::Feature<TrigRoiDescriptor> 'SplitJet'");
+        const Trig::FeatureContainer fecont =chgrp->features();
+        std::vector<Trig::Feature<TrigRoiDescriptor> > roivector = fecont.get<TrigRoiDescriptor>("SplitJet");
+        if( roivector.empty() )
+        {
+            ATH_MSG_DEBUG("    Not found TrigRoiDescriptor instance 'SplitJet'");
+        }
+        else
+        {
+            for(auto & trigroi: roivector)
+            {
+                const TrigRoiDescriptor* roi = trigroi.cptr();
+                ATH_MSG_DEBUG("   * initial-ROI eta: " << roi->eta() << " phi: " << roi->phi() );
+            } 
+        }
+    }
+}
+
 

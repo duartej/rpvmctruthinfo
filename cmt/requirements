@@ -8,6 +8,9 @@ use AthenaBaseComps   AthenaBaseComps-*   Control
 
 use AtlasROOT         AtlasROOT-*         External 
 
+use TrigDecisionTool  TrigDecisionTool-*  Trigger/TrigAnalysis
+use TrigSteeringEvent TrigSteeringEvent-* Trigger/TrigEvent
+
 private
 use AtlasHepMC        AtlasHepMC-*        External
 use GeneratorObjects  GeneratorObjects-*  Generators

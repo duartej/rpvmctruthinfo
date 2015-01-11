@@ -14,6 +14,9 @@
 #include "GaudiKernel/ToolHandle.h"
 #include "GaudiKernel/ITHistSvc.h"
 
+/** Athena specific **/ 
+#include "TrigDecisionTool/TrigDecisionTool.h"
+
 /** forward declarations */
 //class ITHistSvc;
 class TH2F;
@@ -22,6 +25,7 @@ class TH1F;
 /* @class RPVMCTruth
   
   Perform some checks in the RPV MC signal samples
+  and includes the trigger decision obtained
   
   @author  Jordi Duarte-Campderros <jorge.duarte.campderros@cern.ch>
 */
@@ -42,6 +46,9 @@ class RPVMCTruthHists : public AthAlgorithm
 		virtual StatusCode finalize();
 	 
 	private:
+
+        //! Print trigger decision info
+        void printTriggerInfo();
 		
 	  	//  ServiceHandle<ITHistSvc> m_tHistSvc;
 		int m_LLP_PDGID;
@@ -67,6 +74,16 @@ class RPVMCTruthHists : public AthAlgorithm
         TH1F* m_elecPtHist;
         TH1F* m_muonPtHist;
         TH1F* m_nTrk4mmHist;
+
+        // Trigger related stuff
+        ToolHandle<Trig::TrigDecisionTool> m_trigDec;
+        //! Auxiliar variable to define triggers
+        std::vector<std::string> m_triggergroups;  
+        //! List of triggers to checked
+        std::vector<std::string> m_triggerNames;  
+        //! Histograms of triggers with displaced-vertex related variables
+        std::map<std::string,std::vector<TH2F*> > * m_map_triggers;
+
 };
 
 #endif
