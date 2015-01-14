@@ -236,7 +236,7 @@ StatusCode RPVMCTruthHists::initialize()
     }
     // Now using addresses (doing in two phases in order to avoid potential re-allocation
     // of the std:: containers 
-    for(auto & trgnames: m_triggergroups)
+    for(auto & trgnames: m_triggerNames)
     {
         m_tree->Branch(trgnames.c_str(),&(m_trigResult[trgnames]));
         // Jet Roi related (note that should be register here)
@@ -354,13 +354,12 @@ StatusCode RPVMCTruthHists::execute()
                 ++anyJetMatched;
             }
             // Keep track if this vertex has associated a Jet-Roi
-            m_jetroimatched[trgname]->push_back(0);
+			// The vector is filled (0--there's no match, 1--there's match) 
+			// in the DV order. 
+            (m_jetroimatched[trgname])->push_back(anyJetMatched);
         }
     }
 
-    // =================================================================================
-    // Store relevant MC and trigger info
-    
     // Persistency and freeing memory
     m_tree->Fill();
     deallocTreeVars();
@@ -561,8 +560,16 @@ std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string 
 const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const float & eta,const float & deta,
         const float & phi, const float & dphi,  const std::vector<const xAOD::Jet*> & jets)
 {
-    for(auto & jet: jets)
+	ATH_MSG_DEBUG("Looking for a Jet-RoI in a cone around Eta: " << eta 
+			<< " and Phi: " << phi);
+    ATH_MSG_DEBUG("Using a jet(roi-equivalent collection of " << jets.size() 
+			<< " elements");
+    for(auto & jet : jets)
     {
+		if(jet == 0)
+		{
+			continue;
+		}
         // Converting to I4Momentum class in order to use the helper function deltaR
         P4EEtaPhiM jetP4(jet->e(),jet->eta(),jet->phi(),jet->m());
         // Build dR
@@ -583,6 +590,7 @@ const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const float & eta,const fl
             return jet;
         }
     }
+	ATH_MSG_DEBUG("Not found any matched jet");
     return 0;
 }
 
@@ -721,16 +729,16 @@ const std::pair<std::pair<float,float>,std::pair<float,float> >
         eta += _thiseta;
         deta += (_thiseta*_thiseta);
         phi += _thisphi;
-        phi += (_thisphi*_thisphi);
+        dphi += (_thisphi*_thisphi);
     }
 
     const float N = static_cast<float>(particles.size());
     if(N != 0)
     {
         eta = eta/N;
-        deta= sqrt(deta/N-eta*eta);
+        deta= std::sqrt((deta/N)-(eta*eta));
         phi = phi/N;
-        dphi= sqrt(dphi/N-phi*phi);
+        dphi= std::sqrt((dphi/N)-(phi*phi));
     }
     ATH_MSG_DEBUG("Bunch of " << N << " particles::" );
     ATH_MSG_DEBUG("  Mean eta=" << eta << " Deta=" << deta);

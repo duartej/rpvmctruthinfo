@@ -154,7 +154,6 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Histograms of triggers with displaced-vertex related variables
         //! Note that the pair is composed by the Passed-histogram,Total Histogram
         std::map<std::string,std::vector<std::pair<TH1F*,TH1F*> > > m_mapHists;
-
 };
 
 #endif
