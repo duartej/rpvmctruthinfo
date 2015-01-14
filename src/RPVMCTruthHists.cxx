@@ -254,7 +254,7 @@ StatusCode RPVMCTruthHists::initialize()
 
         const std::string jetpt(trgnames+"_jetRoiMatched_pt");
         m_tree->Branch(jetpt.c_str(),&(m_jetroimatched_pt[trgnames]));
-        m_regFPointers.push_back(&(m_jetroimatched_pt[trgnames])));
+        m_regFPointers.push_back(&(m_jetroimatched_pt[trgnames]));
     }
   
     return StatusCode::SUCCESS;

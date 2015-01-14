@@ -140,8 +140,8 @@ class RPVMCTruthHists : public AthAlgorithm
         std::map<std::string,std::vector<float> *> m_jetroimatched_pt;
     
         // Auxiliary member to manage memory (de)allocation
-        std::vector<int *> m_regIPointers;
-        std::vector<float *> m_regFPointers;
+        std::vector<std::vector<int>** > m_regIPointers;
+        std::vector<std::vector<float>** > m_regFPointers;
 
         TTree * m_tree;
 
