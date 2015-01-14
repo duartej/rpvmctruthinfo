@@ -20,7 +20,7 @@
 #include "FourMomUtils/P4Helpers.h"
 
 #include "TH1F.h"
-#include "TH2F.h"
+//#include "TH2F.h"
 #include "TTree.h"
 
 // std library
@@ -34,25 +34,25 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
 		ISvcLocator* pSvcLocator) :
 	AthAlgorithm(name, pSvcLocator),
   	m_tHistSvc("THistSvc",name),
-  	m_boostEtaHist(0),
-  	m_decay2DHist(0),
-  	m_decay3DHist(0),
-  	m_decayRZHist(0),
-  	m_decayXYHist(0),
-  	m_decayR1R2Hist(0),
-  	m_decayZ1Z2Hist(0),
-  	m_decayX0wrtDVHist(0),
-  	m_decayY0wrtDVHist(0),
-  	m_decayZ0wrtDVHist(0),
-  	m_startPosRZHist(0),
-  	m_startPosXYHist(0),
-  	m_pdgIdHist(0),
-  	m_finalStateHist(0),
-  	m_susyMassHist(0),
-  	m_metHist(0),
-  	m_elecPtHist(0),
-  	m_muonPtHist(0),
-  	m_nTrk4mmHist(0),
+  	//m_boostEtaHist(0),
+  	//m_decay2DHist(0),
+  	//m_decay3DHist(0),
+  	//m_decayRZHist(0),
+  	//m_decayXYHist(0),
+  	//m_decayR1R2Hist(0),
+  	//m_decayZ1Z2Hist(0),
+  	//m_decayX0wrtDVHist(0),
+  	//m_decayY0wrtDVHist(0),
+  	//m_decayZ0wrtDVHist(0),
+  	//m_startPosRZHist(0),
+  	//m_startPosXYHist(0),
+  	//m_pdgIdHist(0),
+  	//m_finalStateHist(0),
+  	//m_susyMassHist(0),
+  	//m_metHist(0),
+  	//m_elecPtHist(0),
+  	//m_muonPtHist(0),
+  	//m_nTrk4mmHist(0),
     m_dvX(0),
     m_dvY(0),
     m_dvZ(0),
@@ -62,6 +62,7 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_eta(0),
     m_phi(0),
     m_betagamma(0),
+    m_nTrk(0),
     m_nTrk4mm(0),
     m_tree(0),
     m_trigDec("Trig::TrigDecisionTool/TrigDecisionTool")
@@ -75,17 +76,18 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     declareProperty("TriggerChains", m_triggergroups=_k);
 
     // Register all the pointers related with the ttree variables
-    m_regFPointers.push_back(static_cast<void*>(&m_dvX));
-    m_regFPointers.push_back(static_cast<void*>(&m_dvY));
-    m_regFPointers.push_back(static_cast<void*>(&m_dvZ));
-    m_regFPointers.push_back(static_cast<void*>(&m_vxLSP));
-    m_regFPointers.push_back(static_cast<void*>(&m_vyLSP));
-    m_regFPointers.push_back(static_cast<void*>(&m_vzLSP));
-    m_regFPointers.push_back(static_cast<void*>(&m_eta));
-    m_regFPointers.push_back(static_cast<void*>(&m_phi));
-    m_regFPointers.push_back(static_cast<void*>(&m_betagamma));
+    m_regIPointers.push_back(&m_nTrk4mm);
+    m_regIPointers.push_back(&m_nTrk);
 
-    m_regIPointers.push_back(static_cast<void*>(&m_nTrk4mm));
+    m_regFPointers.push_back(&m_dvX);
+    m_regFPointers.push_back(&m_dvY);
+    m_regFPointers.push_back(&m_dvZ);
+    m_regFPointers.push_back(&m_vxLSP);
+    m_regFPointers.push_back(&m_vyLSP);
+    m_regFPointers.push_back(&m_vzLSP);
+    m_regFPointers.push_back(&m_eta);
+    m_regFPointers.push_back(&m_phi);
+    m_regFPointers.push_back(&m_betagamma);
 }
 
 /// --------------------------------------------------------------------
@@ -196,6 +198,7 @@ StatusCode RPVMCTruthHists::initialize()
     m_tree->Branch("phi",&m_phi);
     m_tree->Branch("betagamma",&m_betagamma);
     // Extra info
+    m_tree->Branch("nTrk",&m_nTrk);
     m_tree->Branch("nTrk4mm",&m_nTrk4mm);
 
     //--- The triggers to be checked
@@ -222,10 +225,36 @@ StatusCode RPVMCTruthHists::initialize()
             if(sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
             sc = m_tHistSvc->regHist("/"+m_streamName+"/"+_totalname, m_mapHists[trgnames].back().second);
             if(sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;*/
-            // tree branches
+            
+            // trigger 
             m_trigResult[trgnames] = false;
-            m_tree->Branch(trgnames.c_str(),&(m_trigResult[trgnames]));
+            m_jetroimatched[trgnames] = 0;
+            m_jetroimatched_eta[trgnames] = 0;
+            m_jetroimatched_phi[trgnames] = 0;
+            m_jetroimatched_pt[trgnames] = 0;
         }
+    }
+    // Now using addresses (doing in two phases in order to avoid potential re-allocation
+    // of the std:: containers 
+    for(auto & trgnames: m_triggergroups)
+    {
+        m_tree->Branch(trgnames.c_str(),&(m_trigResult[trgnames]));
+        // Jet Roi related (note that should be register here)
+        const std::string jetmatched(trgnames+"_isJetRoiMatched");
+        m_tree->Branch(jetmatched.c_str(),&(m_jetroimatched[trgnames]));
+        m_regIPointers.push_back(&(m_jetroimatched[trgnames]));
+        
+        const std::string jeteta(trgnames+"_jetRoiMatched_eta");
+        m_tree->Branch(jeteta.c_str(),&(m_jetroimatched_eta[trgnames]));
+        m_regFPointers.push_back(&(m_jetroimatched_eta[trgnames]));
+        
+        const std::string jetphi(trgnames+"_jetRoiMatched_phi");
+        m_tree->Branch(jetphi.c_str(),&(m_jetroimatched_phi[trgnames]));
+        m_regFPointers.push_back(&(m_jetroimatched_phi[trgnames]));
+
+        const std::string jetpt(trgnames+"_jetRoiMatched_pt");
+        m_tree->Branch(jetpt.c_str(),&(m_jetroimatched_pt[trgnames]));
+        m_regFPointers.push_back(&(m_jetroimatched_pt[trgnames])));
     }
   
     return StatusCode::SUCCESS;
@@ -240,10 +269,10 @@ StatusCode RPVMCTruthHists::execute()
     
     // Get Trigger jets (RoI) to match with the MC-particles
     // and trigger results
-    std::map<std::string,std::vector<const xAOD::JetContainer *> > jetcontainers;
+    std::map<std::string,std::vector<const xAOD::Jet *> > jetsmap;
     for(auto & trgname: m_triggerNames)
     {
-        jetcontainers[trgname] = getTriggerJets(trgname);
+        jetsmap[trgname] = getTriggerJets(trgname);
         m_trigResult[trgname] = getTriggerResult(trgname);
     }
 
@@ -258,23 +287,11 @@ StatusCode RPVMCTruthHists::execute()
     }
     std::vector<const HepMC::GenVertex *> dvertices = getDisplacedVertices(mcColl);
     
+    // Allocate Tree-variables
+    allocTreeVars();
     //=============================================================
     // Get LSP particle (In particle of the dv) for each vertex
-    // and also store some useful info (need to allocate first...)
-    m_dvX = new std::vector<float>;
-    m_dvY = new std::vector<float>;
-    m_dvZ = new std::vector<float>;
-    // Production vertex
-    m_vxLSP = new std::vector<float>; 
-    m_vyLSP = new std::vector<float>;
-    m_vzLSP = new std::vector<float>;
-    // Kinematics
-    m_eta = new std::vector<float>;
-    m_phi = new std::vector<float>;
-    m_betagamma = new std::vector<float>;       
-    // Extra info
-    m_nTrk4mm = new std::vector<int>;
-
+    // and also store some useful info
     std::vector<const HepMC::GenParticle *> lsps;
     std::vector<const HepMC::GenVertex *> prodvtx;
     std::vector<std::vector<const HepMC::GenParticle *> > outparticles;
@@ -301,25 +318,44 @@ StatusCode RPVMCTruthHists::execute()
         // Searching for out-particles which actually leaves an imprint in the detector 
         std::vector<const HepMC::GenParticle*> partindet;
         getParticlesInDetector(vertex,partindet);
+        m_nTrk->push_back(partindet.size());
         ATH_MSG_DEBUG("Number of out-particles: " << vertex->particles_out_size() );
         ATH_MSG_DEBUG("Number of out-particles (status=1): " << partindet.size());
-        // Inside 4mm around the vertex
-        int ntrkInside = 0;
+        // --- Inside 4mm around the vertex
+        std::vector<const HepMC::GenParticle*> partindet_inside4mm;
         for(auto & dp: partindet)
         {
             if(isDecayedAround(dp,vertex))
             {
-                ++ntrkInside;
+                partindet_inside4mm.push_back(dp);
             }
         }
-        m_nTrk4mm->push_back(ntrkInside);
+        m_nTrk4mm->push_back(partindet_inside4mm.size());
+        // Get the eta and phi of the out particles (a mean)
+        std::pair<std::pair<float,float>,std::pair<float,float> > ephP = getMediumEtaPhi(partindet_inside4mm);
+        const float etaMeanOP =ephP.first.first;
+        const float detaMeanOP=ephP.first.second;
+        const float phiMeanOP =ephP.second.first;
+        const float dphiMeanOP=ephP.second.second;
         
-        // Trigger info: find the (jet) RoI with better matching with
-        for(auto & trgjetcontainer : jetcontainers)
+        // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
+        // phi of the DV-particles
+        for(auto & trgnamejets: jetsmap)
         {
-
+            const std::string trgname = trgnamejets.first;
+            const xAOD::Jet * jetmatched = getJetRoIdRMatched(etaMeanOP,detaMeanOP,phiMeanOP,dphiMeanOP,
+                    trgnamejets.second);
+            int anyJetMatched=0;
+            if( jetmatched )
+            {
+                (m_jetroimatched_eta[trgname])->push_back(jetmatched->eta());
+                (m_jetroimatched_phi[trgname])->push_back(jetmatched->phi());
+                (m_jetroimatched_pt[trgname])->push_back(jetmatched->pt());
+                ++anyJetMatched;
+            }
+            // Keep track if this vertex has associated a Jet-Roi
+            m_jetroimatched[trgname]->push_back(0);
         }
-        
     }
 
     // =================================================================================
@@ -486,9 +522,9 @@ bool RPVMCTruthHists::getTriggerResult(const std::string & trgname)
     return isPass;
 }
 
-std::vector<const xAOD::JetContainer *> RPVMCTruthHists::getTriggerJets(const std::string & chgrpname)
+std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string & chgrpname)
 {
-    std::vector<const xAOD::JetContainer*> v;
+    std::vector<const xAOD::Jet*> v;
 
     ATH_MSG_DEBUG(" |-- Trig::Feature<xAOD::JetContainer> 'SplitJet'");
     const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
@@ -511,9 +547,43 @@ std::vector<const xAOD::JetContainer *> RPVMCTruthHists::getTriggerJets(const st
     }*/
     for(size_t i = 0; i < jetfeaturevect.size(); ++i)
     {
-        v.push_back(jetfeaturevect[0].cptr());
+        const xAOD::JetContainer * jets = jetfeaturevect[i].cptr();
+        for(size_t k = 0; k < jets->size(); ++k)
+        {
+            v.push_back( (*jets)[k] );
+            ATH_MSG_DEBUG("    | pt:" << ((*jets)[k])->pt()/Gaudi::Units::GeV <<
+                    " eta:" << ((*jets)[k])->eta() << " phi:" << ((*jets)[k])->phi());
+        }
     }
     return v;
+}
+
+const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const float & eta,const float & deta,
+        const float & phi, const float & dphi,  const std::vector<const xAOD::Jet*> & jets)
+{
+    for(auto & jet: jets)
+    {
+        // Converting to I4Momentum class in order to use the helper function deltaR
+        P4EEtaPhiM jetP4(jet->e(),jet->eta(),jet->phi(),jet->m());
+        // Build dR
+        const double dR = P4Helpers::deltaR(jetP4,static_cast<double>(eta),static_cast<double>(phi));
+        // Build the dispersion:
+        // Delta(dR) =sqrt( (dEta + dPhi)/dR)
+        const double DeltadR= std::sqrt((deta+dphi)/dR);
+        // Building the I4Momentum in order to use the helper func. isInDeltaR
+        P4EEtaPhiM genpart(0.0,eta,phi,0.0);
+        // To be out ---> copying isInDeltaR
+        const double dPhi = std::abs(P4Helpers::deltaPhi(jetP4,phi));
+        const double dEta = std::abs(P4Helpers::deltaPhi(jetP4,eta));
+        if(dPhi > dR || dEta > dR || dR > DeltadR) ATH_MSG_DEBUG("+++ Jet should not be choosen");
+        // To be out ---> copying isInDeltaR
+        if( P4Helpers::isInDeltaR(jetP4,genpart,DeltadR) )
+        {
+            ATH_MSG_DEBUG("+++ P4Helpers::isInDeltaR: Jet choosen");
+            return jet;
+        }
+    }
+    return 0;
 }
 
 std::vector<const HepMC::GenVertex *> RPVMCTruthHists::getDisplacedVertices(const McEventCollection * const mcColl)
@@ -634,26 +704,74 @@ bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC:
 {
     return isDecayedAround(p,vtx,4.0*Gaudi::Units::mm);
 }
+
+const std::pair<std::pair<float,float>,std::pair<float,float> >
+          RPVMCTruthHists::getMediumEtaPhi(const std::vector<const HepMC::GenParticle*> & particles) const
+{
+    // Asuming enough collimated particles (if not, we can use a kind of weighted mean or
+    // getting ride (using a dR<0.005, p.e) of the not collimated particle)
+    float eta = 0.0;
+    float deta= 0.0;
+    float phi = 0.0;
+    float dphi= 0.0;
+    for(auto & p: particles)
+    {
+        const float _thiseta = p->momentum().eta();
+        const float _thisphi = p->momentum().phi();
+        eta += _thiseta;
+        deta += (_thiseta*_thiseta);
+        phi += _thisphi;
+        phi += (_thisphi*_thisphi);
+    }
+
+    const float N = static_cast<float>(particles.size());
+    if(N != 0)
+    {
+        eta = eta/N;
+        deta= sqrt(deta/N-eta*eta);
+        phi = phi/N;
+        dphi= sqrt(dphi/N-phi*phi);
+    }
+    ATH_MSG_DEBUG("Bunch of " << N << " particles::" );
+    ATH_MSG_DEBUG("  Mean eta=" << eta << " Deta=" << deta);
+    ATH_MSG_DEBUG("  Mean phi=" << phi << " Dphi=" << dphi);
+    std::pair<float,float> etapair = std::pair<float,float>(eta,deta);
+    std::pair<float,float> phipair = std::pair<float,float>(phi,dphi);
+
+    return std::pair<std::pair<float,float>,std::pair<float,float> >(etapair,phipair);
+}
+
         
+void RPVMCTruthHists::allocTreeVars()
+{
+    // FIXME:: return a bool checking if everything was ok?
+    for(size_t i = 0; i < m_regIPointers.size(); ++i)
+    {
+        *(m_regIPointers[i]) = new std::vector<int>;
+    }
+    for(size_t i = 0; i < m_regFPointers.size(); ++i)
+    {
+        *(m_regFPointers[i]) = new std::vector<float>;
+    }
+} 
     
 void RPVMCTruthHists::deallocTreeVars()
 {
-    for(size_t i = 0; i < m_regFPointers.size(); ++i)
-    {
-        std::vector<float>** k = static_cast<std::vector<float>** >(m_regFPointers[i]);
-        if( *k )
-        {
-            delete *k;
-            *k = 0;
-        }
-    }
     for(size_t i = 0; i < m_regIPointers.size(); ++i)
     {
-        std::vector<int>** k = static_cast<std::vector<int>** >(m_regFPointers[i]);
-        if( *k )
+        if( *(m_regIPointers[i]) )
         {
-            delete *k;
-            *k = 0;
+            delete *(m_regIPointers[i]);
+            *(m_regIPointers[i]) = 0;
+        }
+    }
+
+    for(size_t i = 0; i < m_regFPointers.size(); ++i)
+    {
+        if( *(m_regFPointers[i]) )
+        {
+            delete *(m_regFPointers[i]);
+            *(m_regFPointers[i]) = 0;
         }
     }
 } 
