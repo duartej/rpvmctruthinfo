@@ -1,4 +1,4 @@
-x86_64-slc6-gcc47-opt
+x86_64-slc6-gcc*-opt
 genConf
 install.x86_64-slc6-gcc47-opt.history
 *.o 
