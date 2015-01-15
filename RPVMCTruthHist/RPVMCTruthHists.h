@@ -73,6 +73,10 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Overloaded above function with the d==4.0*mm
         bool isDecayedAround(const HepMC::GenParticle * p, const HepMC::GenVertex * vtx); 
 
+        //! Auxiliary function to fill kinematics of the gen-particles undecayed from 
+        //! the dv (<4mm)
+        void storeGenParticlesInfo(const std::vector<const HepMC::GenParticle*> & particles);
+
         //! Auxiliary method to deallocate memory of the TTree used variables
         void allocTreeVars();
         void deallocTreeVars();
@@ -100,6 +104,16 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Number of particles (in the detector) associated to a
         //! DV (i.e. tracks start at least within 4 mm from the DV)
         std::vector<int> *   m_nTrk4mm;
+        //! Some kinematics of those particles (note that 
+        // m_nTrk4mm[i] is giving the number of out-undecayed-particles 
+        // (within 4mm) corresponding to the DV-i
+        std::vector<int> *   m_genpfromdv_pdgId;
+        std::vector<float> * m_genpfromdv_eta;
+        std::vector<float> * m_genpfromdv_phi;
+        std::vector<float> * m_genpfromdv_pt;
+        std::vector<float> * m_genpfromdv_vx;
+        std::vector<float> * m_genpfromdv_vy;
+        std::vector<float> * m_genpfromdv_vz;
         
         //! Trigger decision per event
         std::map<std::string,bool> m_trigResult;

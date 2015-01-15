@@ -44,6 +44,13 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_betagamma(0),
     m_nTrk(0),
     m_nTrk4mm(0),
+    m_genpfromdv_pdgId(0),
+    m_genpfromdv_eta(0),
+    m_genpfromdv_phi(0),
+    m_genpfromdv_pt(0),
+    m_genpfromdv_vx(0),
+    m_genpfromdv_vy(0),
+    m_genpfromdv_vz(0),
     m_tree(0),
     m_trigDec("Trig::TrigDecisionTool/TrigDecisionTool")
 {
@@ -56,8 +63,9 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     declareProperty("TriggerChains", m_triggergroups=_k);
 
     // Register all the pointers related with the ttree variables
-    m_regIPointers.push_back(&m_nTrk4mm);
     m_regIPointers.push_back(&m_nTrk);
+    m_regIPointers.push_back(&m_nTrk4mm);
+    m_regIPointers.push_back(&m_genpfromdv_pdgId);
 
     m_regFPointers.push_back(&m_dvX);
     m_regFPointers.push_back(&m_dvY);
@@ -68,6 +76,12 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_regFPointers.push_back(&m_eta);
     m_regFPointers.push_back(&m_phi);
     m_regFPointers.push_back(&m_betagamma);
+    m_regFPointers.push_back(&m_genpfromdv_eta);
+    m_regFPointers.push_back(&m_genpfromdv_phi);
+    m_regFPointers.push_back(&m_genpfromdv_pt);
+    m_regFPointers.push_back(&m_genpfromdv_vx);
+    m_regFPointers.push_back(&m_genpfromdv_vy);
+    m_regFPointers.push_back(&m_genpfromdv_vz);
 }
 
 /// --------------------------------------------------------------------
@@ -106,6 +120,14 @@ StatusCode RPVMCTruthHists::initialize()
     // Extra info
     m_tree->Branch("nTrk",&m_nTrk);
     m_tree->Branch("nTrk4mm",&m_nTrk4mm);
+    // Kinematics of gen-particles undecayed from the DV < 4mm
+    m_tree->Branch("genpfromdv_pdgId",&m_genpfromdv_pdgId);
+    m_tree->Branch("genpfromdv_eta",&m_genpfromdv_eta);
+    m_tree->Branch("genpfromdv_phi",&m_genpfromdv_phi);
+    m_tree->Branch("genpfromdv_pt",&m_genpfromdv_pt);
+    m_tree->Branch("genpfromdv_vx",&m_genpfromdv_vx);
+    m_tree->Branch("genpfromdv_vy",&m_genpfromdv_vy);
+    m_tree->Branch("genpfromdv_vz",&m_genpfromdv_vz);
 
     //--- The triggers to be checked
     sc = m_trigDec.retrieve();
@@ -227,6 +249,8 @@ StatusCode RPVMCTruthHists::execute()
             }
         }
         m_nTrk4mm->push_back(partindet_inside4mm.size());
+        // store some info from this particles
+        storeGenParticlesInfo(partindet_inside4mm);
         
         // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
         // phi of the DV-particles
@@ -267,7 +291,8 @@ StatusCode RPVMCTruthHists::execute()
 
 StatusCode RPVMCTruthHists::finalize() 
 {
-  	return StatusCode::SUCCESS;
+    ATH_MSG_DEBUG( "in RPVMCTruthHists::finalize()");
+    return StatusCode::SUCCESS;
 }
 
 bool RPVMCTruthHists::getTriggerResult(const std::string & trgname)
@@ -464,6 +489,22 @@ bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC:
 bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC::GenVertex * vtx)
 {
     return isDecayedAround(p,vtx,4.0*Gaudi::Units::mm);
+}
+
+void RPVMCTruthHists::storeGenParticlesInfo(const std::vector<const HepMC::GenParticle*> & particles)
+{
+    for(auto & p: particles)
+    {
+        m_genpfromdv_pdgId->push_back(p->pdg_id());
+        m_genpfromdv_eta->push_back(p->momentum().eta());
+        m_genpfromdv_phi->push_back(p->momentum().phi());
+        m_genpfromdv_pt->push_back(p->momentum().perp());
+        const HepMC::GenVertex * vtx = p->production_vertex();
+        m_genpfromdv_vx->push_back(vtx->point3d().x());
+        m_genpfromdv_vy->push_back(vtx->point3d().y());
+        m_genpfromdv_vz->push_back(vtx->point3d().z());
+    }
+
 }
 
         
