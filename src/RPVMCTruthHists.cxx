@@ -223,15 +223,15 @@ StatusCode RPVMCTruthHists::execute()
         const float betagamma = (_lsp->momentum().rho()/_lsp->momentum().m());
         m_betagamma->push_back( betagamma );
         // decay vertex
-        m_dvX->push_back( vertex->point3d().x() );
-        m_dvY->push_back( vertex->point3d().y() );
-        m_dvZ->push_back( vertex->point3d().z() );
+        m_dvX->push_back( vertex->point3d().x()/Gaudi::Units::mm );
+        m_dvY->push_back( vertex->point3d().y()/Gaudi::Units::mm );
+        m_dvZ->push_back( vertex->point3d().z()/Gaudi::Units::mm );
         // production vertex (Primary vertex)
         const HepMC::GenVertex * _prodvtx = _lsp->production_vertex();
         //prodvtx.push_back(_prodvtx);
-        m_vxLSP->push_back( _prodvtx->point3d().x() );
-        m_vyLSP->push_back( _prodvtx->point3d().y() );
-        m_vzLSP->push_back( _prodvtx->point3d().z() );
+        m_vxLSP->push_back( _prodvtx->point3d().x()/Gaudi::Units::mm );
+        m_vyLSP->push_back( _prodvtx->point3d().y()/Gaudi::Units::mm );
+        m_vzLSP->push_back( _prodvtx->point3d().z()/Gaudi::Units::mm );
         
         // Searching for out-particles which actually leaves an imprint in the detector 
         std::vector<const HepMC::GenParticle*> partindet;
@@ -271,7 +271,7 @@ StatusCode RPVMCTruthHists::execute()
             {
                 (m_jetroimatched_eta[trgname])->push_back(jetmatched->eta());
                 (m_jetroimatched_phi[trgname])->push_back(jetmatched->phi());
-                (m_jetroimatched_pt[trgname])->push_back(jetmatched->pt());
+                (m_jetroimatched_pt[trgname])->push_back(jetmatched->pt()/Gaudi::Units::GeV);
                 ++anyJetMatched;
             }
             // Keep track if this vertex has associated a Jet-Roi
@@ -300,8 +300,9 @@ bool RPVMCTruthHists::getTriggerResult(const std::string & trgname)
     const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(trgname);
     bool isPass = chgrp->isPassed();
     ATH_MSG_DEBUG("Trigger Decision Info:: Trigger Chain passed?");
-    ATH_MSG_DEBUG(" -'" << trgname << "': " << isPass);
-    return isPass;
+    ATH_MSG_DEBUG(" -'" << trgname << "': " << isPass);// << "(*Prescale: " 
+            //<< m_prescales[trgname]<< ")");
+    return isPass;//*m_prescales[trgname];
 }
 
 std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string & chgrpname)
@@ -498,13 +499,12 @@ void RPVMCTruthHists::storeGenParticlesInfo(const std::vector<const HepMC::GenPa
         m_genpfromdv_pdgId->push_back(p->pdg_id());
         m_genpfromdv_eta->push_back(p->momentum().eta());
         m_genpfromdv_phi->push_back(p->momentum().phi());
-        m_genpfromdv_pt->push_back(p->momentum().perp());
+        m_genpfromdv_pt->push_back(p->momentum().perp()/Gaudi::Units::GeV);
         const HepMC::GenVertex * vtx = p->production_vertex();
-        m_genpfromdv_vx->push_back(vtx->point3d().x());
-        m_genpfromdv_vy->push_back(vtx->point3d().y());
-        m_genpfromdv_vz->push_back(vtx->point3d().z());
+        m_genpfromdv_vx->push_back(vtx->point3d().x()/Gaudi::Units::mm);
+        m_genpfromdv_vy->push_back(vtx->point3d().y()/Gaudi::Units::mm);
+        m_genpfromdv_vz->push_back(vtx->point3d().z()/Gaudi::Units::mm);
     }
-
 }
 
         

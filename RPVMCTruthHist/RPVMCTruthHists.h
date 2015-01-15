@@ -117,6 +117,7 @@ class RPVMCTruthHists : public AthAlgorithm
         
         //! Trigger decision per event
         std::map<std::string,bool> m_trigResult;
+        //std::map<std::string,float> m_prescales;
 
         //! Keeping track if the a jet-roi was matched with a DV-particles
         std::map<std::string,std::vector<int> *> m_jetroimatched;
