@@ -61,11 +61,7 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Getting the RoI (jet) collection to match with MC
         std::vector<const xAOD::Jet *> getTriggerJets(const std::string & chgrname); 
 
-        //! Get the Jet (RoI-based) which matches in a dR (eta,phi)-defined, and using the
-        //! the eta,phi dispersion
-        const xAOD::Jet * getJetRoIdRMatched(const float & eta, const float & deta, 
-                const float & phi, const float & dphi, const std::vector<const xAOD::Jet*> & jets);
-        
+        //! Get the Jet (RoI-based) which matches in a dR any of the genp particles
         const xAOD::Jet * getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
                 const std::vector<const xAOD::Jet*> & jets);
 

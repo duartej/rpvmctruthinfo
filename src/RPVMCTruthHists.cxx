@@ -346,7 +346,6 @@ StatusCode RPVMCTruthHists::execute()
             }
             // Otherwise, trying to match the jet-roi with the outparticles from the DV
             const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside4mm,trgnamejets.second);
-            //const xAOD::Jet * jetmatched = getJetRoIdRMatched(etaMeanOP,detaMeanOP,phiMeanOP,dphiMeanOP,
             //        trgnamejets.second);
             int anyJetMatched=0;
             if( jetmatched )
@@ -599,43 +598,6 @@ const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const He
         }
     }
     ATH_MSG_DEBUG("Not found any matched jet");
-    return 0;
-}
-
-const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const float & eta,const float & deta,
-        const float & phi, const float & dphi,  const std::vector<const xAOD::Jet*> & jets)
-{
-	ATH_MSG_DEBUG("Looking for a Jet-RoI in a cone around Eta: " << eta 
-			<< " and Phi: " << phi);
-    ATH_MSG_DEBUG("Using a jet (roi-equivalent) collection of " << jets.size() 
-			<< " elements");
-    for(auto & jet : jets)
-    {
-		if(jet == 0)
-		{
-			continue;
-		}
-        // Converting to I4Momentum class in order to use the helper function deltaR
-        P4EEtaPhiM jetP4(jet->e(),jet->eta(),jet->phi(),jet->m());
-        // Build dR
-        const double dR = P4Helpers::deltaR(jetP4,static_cast<double>(eta),static_cast<double>(phi));
-        // Build the dispersion:
-        // Delta(dR) =sqrt( (dEta + dPhi)/dR)
-        const double DeltadR= std::sqrt((deta+dphi)/dR);
-        // Building the I4Momentum in order to use the helper func. isInDeltaR
-        P4EEtaPhiM genpart(1.0,eta,phi,0.0);
-        // To be out ---> copying isInDeltaR
-        const double dPhi = std::abs(P4Helpers::deltaPhi(jetP4,phi));
-        const double dEta = std::abs(P4Helpers::deltaPhi(jetP4,eta));
-        if(dPhi > DeltadR || dEta > DeltadR || dR > DeltadR) ATH_MSG_DEBUG("+++ Jet should not be choosen");
-        // To be out ---> copying isInDeltaR
-        if( P4Helpers::isInDeltaR(jetP4,genpart,DeltadR) )
-        {
-            ATH_MSG_DEBUG("+++ P4Helpers::isInDeltaR: Jet choosen");
-            return jet;
-        }
-    }
-	ATH_MSG_DEBUG("Not found any matched jet");
     return 0;
 }
 
