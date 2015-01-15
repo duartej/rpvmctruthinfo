@@ -20,8 +20,6 @@
 #include "FourMom/P4PxPyPzE.h"
 #include "FourMomUtils/P4Helpers.h"
 
-//#include "TH1F.h"
-//#include "TH2F.h"
 #include "TTree.h"
 
 // std library
@@ -35,25 +33,6 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
 		ISvcLocator* pSvcLocator) :
 	AthAlgorithm(name, pSvcLocator),
   	m_tHistSvc("THistSvc",name),
-  	//m_boostEtaHist(0),
-  	//m_decay2DHist(0),
-  	//m_decay3DHist(0),
-  	//m_decayRZHist(0),
-  	//m_decayXYHist(0),
-  	//m_decayR1R2Hist(0),
-  	//m_decayZ1Z2Hist(0),
-  	//m_decayX0wrtDVHist(0),
-  	//m_decayY0wrtDVHist(0),
-  	//m_decayZ0wrtDVHist(0),
-  	//m_startPosRZHist(0),
-  	//m_startPosXYHist(0),
-  	//m_pdgIdHist(0),
-  	//m_finalStateHist(0),
-  	//m_susyMassHist(0),
-  	//m_metHist(0),
-  	//m_elecPtHist(0),
-  	//m_muonPtHist(0),
-  	//m_nTrk4mmHist(0),
     m_dvX(0),
     m_dvY(0),
     m_dvZ(0),
@@ -104,81 +83,7 @@ StatusCode RPVMCTruthHists::initialize()
   		return sc;
     }
   
-    /*m_boostEtaHist = new TH2F("DVBoostVsEta","; #eta; #beta#gamma",100,-5.,5.,100,0.,10.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/DVBoostVsEta", m_boostEtaHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_decay2DHist = new TH1F("Decay2D","; decay radius",100,0.,300);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/Decay2D", m_decay2DHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_decay3DHist = new TH1F("Decay3D","; decay distance",100,0.,1000);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/Decay3D", m_decay3DHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_decayRZHist = new TH2F("DecayRZ","; z_{DV}; r_{DV}",600,-300.,300.,300,0.,300.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/DecayRZ", m_decayRZHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-    m_decayXYHist = new TH2F("DecayXY","; x_{DV}; y_{DV}",600,-300.,300.,600,-300.,300.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/DecayXY", m_decayXYHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_decayR1R2Hist = new TH2F("DecayR1R2","; r_{DV,1}; r_{DV,2}",60,0.,600.,60,0.,600.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/DecayR1R2", m_decayR1R2Hist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_decayZ1Z2Hist = new TH2F("DecayZ1Z2","; z_{DV,1}; z_{DV,2}",60,-600.,600.,60,-600.,600.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/DecayZ1Z2", m_decayZ1Z2Hist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_startPosRZHist = new TH2F("StartRZ","; z_{DV}; r_{DV}",600,-300.,300.,300,0.,300.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/StartRZ", m_startPosRZHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-    m_startPosXYHist = new TH2F("StartXY","; x_{DV}; y_{DV}",600,-300.,300.,600,-300.,300.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/StartXY", m_startPosXYHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-  
-    m_decayX0wrtDVHist = new TH1F("DecayX0wrtDV","; x0 wrt DV",100,-10.,10);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/DecayX0wrtDV", m_decayX0wrtDVHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_decayY0wrtDVHist = new TH1F("DecayY0wrtDV","; y0 wrt DV",100,-10.,10);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/DecayY0wrtDV", m_decayY0wrtDVHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_decayZ0wrtDVHist = new TH1F("DecayZ0wrtDV","; z0 wrt DV",100,-10.,10);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/DecayZ0wrtDV", m_decayZ0wrtDVHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_pdgIdHist = new TH1F("pdgID","; PDG ID",1100,-550.,550);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/pdgID", m_pdgIdHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_finalStateHist = new TH1F("finalState","; Final state",30,-0.5,2.5);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/finalState", m_finalStateHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_susyMassHist = new TH1F("susyMass","; Mass [GeV]",120,0.,1200.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/susyMass", m_susyMassHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_metHist= new TH1F("met","; MET [GeV]",100,0.,200.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/met", m_metHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_elecPtHist= new TH1F("elecPt","; electron pT [GeV]",100,0.,200.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/elecPt", m_elecPtHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_muonPtHist= new TH1F("muonPt","; muon pT [GeV]",100,0.,200.);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/muonPt", m_muonPtHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-  
-    m_nTrk4mmHist = new TH1F("nTrk4mm","; nTrk within 4mm of DV",50,-0.5,49.5);
-    sc = m_tHistSvc->regHist("/"+m_streamName+"/nTrk4mm", m_nTrk4mmHist);
-    if (sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;*/
-
+    // Initilization and registration of the tree
     m_tree = new TTree("RPVMCInfoTree","Displaced vertex MC-Info" );
     sc = m_tHistSvc->regTree("/"+m_streamName+"/RPVMCInfo",m_tree);
     if(sc.isFailure())
@@ -216,16 +121,6 @@ StatusCode RPVMCTruthHists::initialize()
         for(auto & trgnames: m_trigDec->getListOfTriggers(trgn))
         {
             m_triggerNames.push_back(trgnames);
-            // Provisional!!
-            /*const std::string _passname = trgnames+"_r_pass";
-            const std::string _totalname = trgnames+"_r_total";
-            m_mapHists[trgnames].push_back( 
-                    std::pair<TH1F*,TH1F*>(new TH1F(_passname.c_str(),"Absolute radial distance",100,0,300),
-                        new TH1F(_totalname.c_str(),"Absolute radial distance",100,0,300)) );
-            sc = m_tHistSvc->regHist("/"+m_streamName+"/"+_passname, m_mapHists[trgnames].back().first);
-            if(sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;
-            sc = m_tHistSvc->regHist("/"+m_streamName+"/"+_totalname, m_mapHists[trgnames].back().second);
-            if(sc.isFailure()) msg(MSG::FATAL)<<"Failed to book histogram"<<endreq;*/
             
             // trigger 
             m_trigResult[trgnames] = false;
@@ -293,13 +188,13 @@ StatusCode RPVMCTruthHists::execute()
     //=============================================================
     // Get LSP particle (In particle of the dv) for each vertex
     // and also store some useful info
-    std::vector<const HepMC::GenParticle *> lsps;
-    std::vector<const HepMC::GenVertex *> prodvtx;
-    std::vector<std::vector<const HepMC::GenParticle *> > outparticles;
+    //std::vector<const HepMC::GenParticle *> lsps;
+    //std::vector<const HepMC::GenVertex *> prodvtx;
+    //std::vector<std::vector<const HepMC::GenParticle *> > outparticles;
     for(auto & vertex : dvertices)
     {
         const HepMC::GenParticle * _lsp =  *(vertex->particles_in_const_begin()); 
-        lsps.push_back( _lsp );
+        //lsps.push_back( _lsp );
         // LSP kinematics
         m_eta->push_back( _lsp->momentum().eta() );
         m_phi->push_back( _lsp->momentum().phi() );
@@ -311,7 +206,7 @@ StatusCode RPVMCTruthHists::execute()
         m_dvZ->push_back( vertex->point3d().z() );
         // production vertex (Primary vertex)
         const HepMC::GenVertex * _prodvtx = _lsp->production_vertex();
-        prodvtx.push_back(_prodvtx);
+        //prodvtx.push_back(_prodvtx);
         m_vxLSP->push_back( _prodvtx->point3d().x() );
         m_vyLSP->push_back( _prodvtx->point3d().y() );
         m_vzLSP->push_back( _prodvtx->point3d().z() );
@@ -361,148 +256,9 @@ StatusCode RPVMCTruthHists::execute()
             (m_jetroimatched[trgname])->push_back(anyJetMatched);
         }
     }
-
     // Persistency and freeing memory
     m_tree->Fill();
     deallocTreeVars();
-
-    // =================================================================================
-    // Retrieving MC-info
-    /*McEventCollection::const_iterator evtItr = mcColl->begin();
-    for (;  evtItr!=mcColl->end(); ++evtItr) 
-	{
-  		HepMC::GenEvent::particle_const_iterator partItr = (*evtItr)->particles_begin();
-  		int partCount=0;
-  		int chiCount=0;
-  		float r1=0;
-  		float r2=0;
-  		float z1=0;
-  		float z2=0;
-  		float totalMET_x=0.;
-		float totalMET_y=0.;
-
-      	for(; partItr!=(*evtItr)->particles_end(); ++partItr) 
-		{
-			partCount++;
-			if (abs((*partItr)->pdg_id()) > 1000000) m_susyMassHist->Fill((*partItr)->momentum().m()/Gaudi::Units::GeV);
-			if (abs((*partItr)->pdg_id()) ==11) m_elecPtHist->Fill((*partItr)->momentum().perp()/Gaudi::Units::GeV);
-			if (abs((*partItr)->pdg_id()) ==13) m_muonPtHist->Fill((*partItr)->momentum().perp()/Gaudi::Units::GeV);
-			if ((abs((*partItr)->pdg_id()) ==12)|| (abs((*partItr)->pdg_id()) ==14)) 
-			{
-				totalMET_x +=(*partItr)->momentum().px()/Gaudi::Units::GeV;
-				totalMET_y +=(*partItr)->momentum().py()/Gaudi::Units::GeV;
-			}
-	 		
-			if ((*partItr)->pdg_id() !=  m_LLP_PDGID ) continue;
-			if ((*partItr)->production_vertex()==0) continue;
-			if ((*partItr)->end_vertex()==0) continue;
-			//      if ((*partItr)->status() !=2 ) continue;
-  	        float startX = (*partItr)->production_vertex()->position().x();
-			float decayX = (*partItr)->end_vertex()->position().x();
-			float startY = (*partItr)->production_vertex()->position().y();
-			float decayY = (*partItr)->end_vertex()->position().y();
-			float decayZ  = (*partItr)->end_vertex()->position().z();
-			if (fabs(startX-decayX)<0.1) continue;
-			chiCount++;
-			float r = sqrt((startX-decayX)*(startX-decayX)+(startY-decayY)*(startY-decayY));
-			if (chiCount==1) 
-			{ 
-				r1=r;
-				z1=decayZ;
-			}			
-			else 
-			{
-				r2=r;
-				z2=decayZ;
-				m_decayR1R2Hist->Fill(r1,r2);
-				m_decayZ1Z2Hist->Fill(z1,z2);
-			}
-		  	
-			float startZ  = (*partItr)->production_vertex()->position().z();
-			float z = decayZ-startZ;
-			float dist=sqrt(r*r+z*z);
-			m_decay2DHist->Fill(r);
-			m_decay3DHist->Fill(dist);
-			m_decayRZHist->Fill(decayZ,r);
-			m_decayXYHist->Fill(decayX,decayY);
-			
-			HepMC::FourVector v = (*partItr)->momentum();
-			float eta = v.eta();
-			float betagamma = v.rho()/v.m() ;
-			m_boostEtaHist->Fill(eta,betagamma);
-			if ((fabs(decayX) < 5.) && ( fabs(decayY)<5.)) continue;
-			int nTrk4mm=0;
-			
-			/// inner loop over other particles..
-			HepMC::GenEvent::particle_const_iterator partItr2 = (*evtItr)->particles_begin();
-			for (; partItr2!=(*evtItr)->particles_end(); ++partItr2) 
-			{
-				if ((*partItr)->barcode()==(*partItr2)->barcode()) continue;
-				if ((*partItr2)->production_vertex()==0) continue;
-
-				float dauX = (*partItr2)->production_vertex()->position().x();
-				float dauY = (*partItr2)->production_vertex()->position().y();
-				float dauZ = (*partItr2)->production_vertex()->position().z();
-                // Particles (with tracks) created within 4-mm radius from the decay of the
-                // LSP
-				if ((fabs(dauX-decayX)<4.) && (fabs(dauY-decayY)<4.) && 
-						(fabs(dauZ-decayZ)<4.) && ((*partItr2)->status()==1)) 
-				{
-					nTrk4mm++;
-                    // Match with the RoI-Trigger available
-                    P4EEtaPhiM daugP4((*partItr)->momentum().e(),(*partItr)->momentum().eta(),
-                            (*partItr)->momentum().phi(),(*partItr)->momentum().m());
-                    for(auto & strPair : m_mapHists)
-                    {
-                        if( (jetcontainers[strPair.first]) == 0 )
-                        {
-                            continue;
-                        }
-                        for(auto jet: *(jetcontainers[strPair.first]))
-                        {
-                            P4EEtaPhiM jetP4(jet->p4().E(),jet->p4().Eta(),jet->p4().Phi(),
-                                    jet->p4().M());
-                            if( P4Helpers::isInDeltaR(daugP4,jetP4,0.05) )
-                            {
-                                (strPair.second[0].second)->Fill( sqrt(decayX*decayX+decayY*decayY+decayZ*decayZ) );
-                                if( trResult[strPair.first] )
-                                {
-                                    (strPair.second[0].first)->Fill( sqrt(decayX*decayX+decayY*decayY+decayZ*decayZ) );
-                                }
-                            }
-                        }
-                    }
-
-					if (abs((*partItr2)->pdg_id())==13) m_finalStateHist->Fill(0.);
-					if (abs((*partItr2)->pdg_id())==11) m_finalStateHist->Fill(1.);
-					if ((abs((*partItr2)->pdg_id())==12) || (abs((*partItr2)->pdg_id())==14))  m_finalStateHist->Fill(2.);
-					
-		  		}
-                // Particles created within 10-mm radius from the decay of the
-                // LSP
-				if((fabs(dauX-decayX)<10.) && (fabs(dauY-decayY)<10.) && (fabs(dauZ-decayZ)<10.)) 
-		  		{
-					ATH_MSG_DEBUG(" " << (*partItr2)->pdg_id() << "-particle from DV? "
-                            <<(*partItr2)->pdg_id()<<" "<<decayX<<" "<<dauX<<" "<<(*partItr2)->status());
-					m_pdgIdHist->Fill((*partItr2)->pdg_id());
-					
-					if ((*partItr2)->end_vertex()!=0) 
-					{
-                        ATH_MSG_DEBUG(" long-lived particle from DV? "<<(*partItr2)->pdg_id()<<" "
-							<<decayX<<" "<<dauX<<" "<<(*partItr2)->end_vertex()->position().x()<<" "
-							<<(*partItr2)->status());
-					}
-					m_decayX0wrtDVHist->Fill(dauX - decayX);
-					m_decayY0wrtDVHist->Fill(dauY - decayY);
-					m_decayZ0wrtDVHist->Fill(dauZ - decayZ);
-					m_startPosXYHist->Fill(dauX,dauY);
-					m_startPosRZHist->Fill(dauZ,sqrt(dauX*dauX+dauY*dauY));
-		  		}
-	 		}
-			m_nTrk4mmHist->Fill(nTrk4mm);
-  		}
-   		m_metHist->Fill(sqrt(totalMET_x*totalMET_x+totalMET_y*totalMET_y));
-	}*/
   	
 	return StatusCode::SUCCESS;
 }
@@ -536,16 +292,6 @@ std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string 
         ATH_MSG_DEBUG("    Not found xAOD::JetContainer instance 'SplitJet'");
         return v;
     }
-    /*else
-    {
-        if( jetfeaturevect.size() != 1 )
-        {
-            ATH_MSG_ERROR("Problem with TrigDecisionTool:: the feature xAOD::JetContainer " <<
-                    " ('SplitJet' instance) is apearing more than once! It cannot be");
-            return 0;
-        }
-        return jetfeaturevect[0];
-    }*/
     for(size_t i = 0; i < jetfeaturevect.size(); ++i)
     {
         const xAOD::JetContainer * jets = jetfeaturevect[i].cptr();

@@ -18,9 +18,6 @@
 #include "TrigDecisionTool/TrigDecisionTool.h"
 
 /** forward declarations */
-//class ITHistSvc;
-//class TH2F;
-class TH1F;
 class TTree;
 
 namespace HepMC
@@ -85,25 +82,6 @@ class RPVMCTruthHists : public AthAlgorithm
         std::string m_mcCollName;
         std::string m_streamName;
         ServiceHandle<ITHistSvc> m_tHistSvc;
-        //TH2F* m_boostEtaHist;
-        //TH1F* m_decay2DHist;
-        //TH1F* m_decay3DHist;
-        //TH2F* m_decayRZHist;
-        //TH2F* m_decayXYHist;
-        //TH2F* m_decayR1R2Hist;
-        //TH2F* m_decayZ1Z2Hist;
-        //TH1F* m_decayX0wrtDVHist;
-        //TH1F* m_decayY0wrtDVHist;
-        //TH1F* m_decayZ0wrtDVHist;
-        //TH2F* m_startPosRZHist;
-        //TH2F* m_startPosXYHist;  
-        //TH1F* m_pdgIdHist;
-        //TH1F* m_finalStateHist;
-        //TH1F* m_susyMassHist;
-        //TH1F* m_metHist;
-        //TH1F* m_elecPtHist;
-        //TH1F* m_muonPtHist;
-        //TH1F* m_nTrk4mmHist;
         //! LSP decay vertex
         std::vector<float> * m_dvX;
         std::vector<float> * m_dvY;
@@ -145,9 +123,6 @@ class RPVMCTruthHists : public AthAlgorithm
         std::vector<std::string> m_triggergroups;  
         //! List of triggers to checked
         std::vector<std::string> m_triggerNames;  
-        //! Histograms of triggers with displaced-vertex related variables
-        //! Note that the pair is composed by the Passed-histogram,Total Histogram
-        std::map<std::string,std::vector<std::pair<TH1F*,TH1F*> > > m_mapHists;
 };
 
 #endif
