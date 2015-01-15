@@ -80,12 +80,6 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Overloaded above function with the d==4.0*mm
         bool isDecayedAround(const HepMC::GenParticle * p, const HepMC::GenVertex * vtx); 
 
-        //! Get the mean and its dispersion of eta and phi of a bunch of particles
-        //! The assumption
-        const std::pair<std::pair<float,float>,std::pair<float,float> > 
-            getMediumEtaPhi(const std::vector<const HepMC::GenParticle*> & particles,
-                    const HepMC::GenVertex * vtx) const;
-
         //! Auxiliary method to deallocate memory of the TTree used variables
         void allocTreeVars();
         void deallocTreeVars();

@@ -20,7 +20,7 @@
 #include "FourMom/P4PxPyPzE.h"
 #include "FourMomUtils/P4Helpers.h"
 
-#include "TH1F.h"
+//#include "TH1F.h"
 //#include "TH2F.h"
 #include "TTree.h"
 
@@ -332,13 +332,6 @@ StatusCode RPVMCTruthHists::execute()
             }
         }
         m_nTrk4mm->push_back(partindet_inside4mm.size());
-        
-        // Get the eta and phi of the out particles (a mean)
-        /*std::pair<std::pair<float,float>,std::pair<float,float> > ephP = getMediumEtaPhi(partindet_inside4mm,vertex);
-        const float etaMeanOP =ephP.first.first;
-        const float detaMeanOP=ephP.first.second;
-        const float phiMeanOP =ephP.second.first;
-        const float dphiMeanOP=ephP.second.second;*/
         
         // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
         // phi of the DV-particles
@@ -763,60 +756,6 @@ bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC:
 bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC::GenVertex * vtx)
 {
     return isDecayedAround(p,vtx,4.0*Gaudi::Units::mm);
-}
-
-const std::pair<std::pair<float,float>,std::pair<float,float> >
-          RPVMCTruthHists::getMediumEtaPhi(const std::vector<const HepMC::GenParticle*> & particles,
-                  const HepMC::GenVertex * vtx) const
-{
-    // Asuming enough collimated particles (if not, we can use a kind of weighted mean or
-    // getting ride (using a dR<0.005, p.e) of the not collimated particle)
-    float eta = 0.0;
-    float deta= 0.0;
-    float phi = 0.0;
-    float dphi= 0.0;
-    for(auto & p: particles)
-    {
-        const float _thiseta = p->momentum().eta();
-        const float _thisphi = p->momentum().phi();
-        eta += _thiseta;
-        deta += (_thiseta*_thiseta);
-        phi += _thisphi;
-        dphi += (_thisphi*_thisphi);
-    }
-
-    const float N = static_cast<float>(particles.size());
-    if(N != 0)
-    {
-        eta = eta/N;
-        deta= std::sqrt((deta/N)-(eta*eta));
-        phi = phi/N;
-        dphi= std::sqrt((dphi/N)-(phi*phi));
-    }
-    // Bringing the gen-particles from the displaced vertex to the origin
-    // in order to be able to be compared with the Jet-Roi(s)
-    const P4EEtaPhiM meanP4(1.0,eta,phi,0.0);
-    // building the vector sum vertex+momentum (mean-momentum) particles-out
-    const HepMC::ThreeVector meanPatOrigin(
-            vtx->point3d().x()+meanP4.px(),
-            vtx->point3d().y()+meanP4.py(),
-            vtx->point3d().z()+meanP4.pz());
-
-    const P4PxPyPzE meanP4atOrigin(meanPatOrigin.x(),meanPatOrigin.y(),meanPatOrigin.z(),meanPatOrigin.r());
-    // Eta and Phi w.r.t. to the origin, 
-    ATH_MSG_DEBUG("Bunch of " << N << " particles::" );
-    ATH_MSG_DEBUG("  Mean eta=" << eta << " Deta=" << deta);
-    ATH_MSG_DEBUG("  Mean phi=" << phi << " Dphi=" << dphi);
-    eta = meanP4atOrigin.eta();
-    phi = meanP4atOrigin.phi();
-
-    ATH_MSG_DEBUG("  (Eta and Phi corrected to the origin)");
-    ATH_MSG_DEBUG("  Mean eta=" << eta << " Deta=" << deta);
-    ATH_MSG_DEBUG("  Mean phi=" << phi << " Dphi=" << dphi);
-    std::pair<float,float> etapair = std::pair<float,float>(eta,deta);
-    std::pair<float,float> phipair = std::pair<float,float>(phi,dphi);
-
-    return std::pair<std::pair<float,float>,std::pair<float,float> >(etapair,phipair);
 }
 
         
