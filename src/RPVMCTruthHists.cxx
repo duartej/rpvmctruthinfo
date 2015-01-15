@@ -17,6 +17,7 @@
 #include "xAODJet/JetContainer.h"
 
 #include "FourMom/P4EEtaPhiM.h"
+#include "FourMom/P4PxPyPzE.h"
 #include "FourMomUtils/P4Helpers.h"
 
 #include "TH1F.h"
@@ -331,20 +332,29 @@ StatusCode RPVMCTruthHists::execute()
             }
         }
         m_nTrk4mm->push_back(partindet_inside4mm.size());
+        
         // Get the eta and phi of the out particles (a mean)
-        std::pair<std::pair<float,float>,std::pair<float,float> > ephP = getMediumEtaPhi(partindet_inside4mm);
+        /*std::pair<std::pair<float,float>,std::pair<float,float> > ephP = getMediumEtaPhi(partindet_inside4mm,vertex);
         const float etaMeanOP =ephP.first.first;
         const float detaMeanOP=ephP.first.second;
         const float phiMeanOP =ephP.second.first;
-        const float dphiMeanOP=ephP.second.second;
+        const float dphiMeanOP=ephP.second.second;*/
         
         // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
         // phi of the DV-particles
         for(auto & trgnamejets: jetsmap)
         {
             const std::string trgname = trgnamejets.first;
-            const xAOD::Jet * jetmatched = getJetRoIdRMatched(etaMeanOP,detaMeanOP,phiMeanOP,dphiMeanOP,
-                    trgnamejets.second);
+            // If there is no jet, don't waste time
+            if(trgnamejets.second.size() == 0)
+            {
+                (m_jetroimatched[trgname])->push_back(0);
+                continue;
+            }
+            // Otherwise, trying to match the jet-roi with the outparticles from the DV
+            const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside4mm,trgnamejets.second);
+            //const xAOD::Jet * jetmatched = getJetRoIdRMatched(etaMeanOP,detaMeanOP,phiMeanOP,dphiMeanOP,
+            //        trgnamejets.second);
             int anyJetMatched=0;
             if( jetmatched )
             {
@@ -557,12 +567,54 @@ std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string 
     return v;
 }
 
+const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
+        const std::vector<const xAOD::Jet*> & jets)
+{
+    ATH_MSG_DEBUG("Using a jet(roi-equivalent collection of " << jets.size() 
+            << " elements trying to be matched with a collection of status-1" 
+            << " gen particles from the DV.");
+    for(auto & p : particles)
+    {
+        // keep only hadrons (just simple approach by now)
+        if( std::abs(p->pdg_id()) < 101 )
+        {
+           continue;
+        } 
+        // And with at least some pt
+        if( p->momentum().perp() < 1.0*Gaudi::Units::GeV )
+        {
+            continue;
+        }
+        ATH_MSG_DEBUG("Particle (pdgID=" << p->pdg_id() << ") Eta: " << p->momentum().eta()
+			<< " and Phi: " << p->momentum().phi());
+        // Correcting Eta and Phi, in order to be trans
+        for(auto & jet : jets)
+        {
+            if(jet == 0)
+            {
+                continue;
+            }
+            // Converting to I4Momentum class in order to use the helper function deltaR
+            // Assuming that the DV position is negligible with respect the point where 
+            // the jets were built
+            P4EEtaPhiM jetP4(jet->e(),jet->eta(),jet->phi(),jet->m());
+            P4EEtaPhiM genP4(p->momentum().e(),p->momentum().eta(),p->momentum().phi(),p->momentum().m());
+            if( P4Helpers::isInDeltaR(jetP4,genP4,0.2) )
+            {
+                return jet;
+            }
+        }
+    }
+    ATH_MSG_DEBUG("Not found any matched jet");
+    return 0;
+}
+
 const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const float & eta,const float & deta,
         const float & phi, const float & dphi,  const std::vector<const xAOD::Jet*> & jets)
 {
 	ATH_MSG_DEBUG("Looking for a Jet-RoI in a cone around Eta: " << eta 
 			<< " and Phi: " << phi);
-    ATH_MSG_DEBUG("Using a jet(roi-equivalent collection of " << jets.size() 
+    ATH_MSG_DEBUG("Using a jet (roi-equivalent) collection of " << jets.size() 
 			<< " elements");
     for(auto & jet : jets)
     {
@@ -578,11 +630,11 @@ const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const float & eta,const fl
         // Delta(dR) =sqrt( (dEta + dPhi)/dR)
         const double DeltadR= std::sqrt((deta+dphi)/dR);
         // Building the I4Momentum in order to use the helper func. isInDeltaR
-        P4EEtaPhiM genpart(0.0,eta,phi,0.0);
+        P4EEtaPhiM genpart(1.0,eta,phi,0.0);
         // To be out ---> copying isInDeltaR
         const double dPhi = std::abs(P4Helpers::deltaPhi(jetP4,phi));
         const double dEta = std::abs(P4Helpers::deltaPhi(jetP4,eta));
-        if(dPhi > dR || dEta > dR || dR > DeltadR) ATH_MSG_DEBUG("+++ Jet should not be choosen");
+        if(dPhi > DeltadR || dEta > DeltadR || dR > DeltadR) ATH_MSG_DEBUG("+++ Jet should not be choosen");
         // To be out ---> copying isInDeltaR
         if( P4Helpers::isInDeltaR(jetP4,genpart,DeltadR) )
         {
@@ -682,7 +734,7 @@ void RPVMCTruthHists::getParticlesInDetector(const HepMC::GenVertex * vtx, std::
         endvertices.insert( (*partOut)->end_vertex() );
     }
     
-    // Tracking-down the vertices until find the status 1
+    // Tracking-down recursively the vertices until find the status 1
     for(auto & evtx : endvertices)
     {
         getParticlesInDetector(evtx,indetector);
@@ -714,7 +766,8 @@ bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC:
 }
 
 const std::pair<std::pair<float,float>,std::pair<float,float> >
-          RPVMCTruthHists::getMediumEtaPhi(const std::vector<const HepMC::GenParticle*> & particles) const
+          RPVMCTruthHists::getMediumEtaPhi(const std::vector<const HepMC::GenParticle*> & particles,
+                  const HepMC::GenVertex * vtx) const
 {
     // Asuming enough collimated particles (if not, we can use a kind of weighted mean or
     // getting ride (using a dR<0.005, p.e) of the not collimated particle)
@@ -740,7 +793,24 @@ const std::pair<std::pair<float,float>,std::pair<float,float> >
         phi = phi/N;
         dphi= std::sqrt((dphi/N)-(phi*phi));
     }
+    // Bringing the gen-particles from the displaced vertex to the origin
+    // in order to be able to be compared with the Jet-Roi(s)
+    const P4EEtaPhiM meanP4(1.0,eta,phi,0.0);
+    // building the vector sum vertex+momentum (mean-momentum) particles-out
+    const HepMC::ThreeVector meanPatOrigin(
+            vtx->point3d().x()+meanP4.px(),
+            vtx->point3d().y()+meanP4.py(),
+            vtx->point3d().z()+meanP4.pz());
+
+    const P4PxPyPzE meanP4atOrigin(meanPatOrigin.x(),meanPatOrigin.y(),meanPatOrigin.z(),meanPatOrigin.r());
+    // Eta and Phi w.r.t. to the origin, 
     ATH_MSG_DEBUG("Bunch of " << N << " particles::" );
+    ATH_MSG_DEBUG("  Mean eta=" << eta << " Deta=" << deta);
+    ATH_MSG_DEBUG("  Mean phi=" << phi << " Dphi=" << dphi);
+    eta = meanP4atOrigin.eta();
+    phi = meanP4atOrigin.phi();
+
+    ATH_MSG_DEBUG("  (Eta and Phi corrected to the origin)");
     ATH_MSG_DEBUG("  Mean eta=" << eta << " Deta=" << deta);
     ATH_MSG_DEBUG("  Mean phi=" << phi << " Dphi=" << dphi);
     std::pair<float,float> etapair = std::pair<float,float>(eta,deta);

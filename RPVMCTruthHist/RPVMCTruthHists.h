@@ -65,6 +65,9 @@ class RPVMCTruthHists : public AthAlgorithm
         //! the eta,phi dispersion
         const xAOD::Jet * getJetRoIdRMatched(const float & eta, const float & deta, 
                 const float & phi, const float & dphi, const std::vector<const xAOD::Jet*> & jets);
+        
+        const xAOD::Jet * getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
+                const std::vector<const xAOD::Jet*> & jets);
 
         //! Get the displaced-vertex in the event
         std::vector<const HepMC::GenVertex *> getDisplacedVertices(const McEventCollection * const mcColl);
@@ -80,7 +83,8 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Get the mean and its dispersion of eta and phi of a bunch of particles
         //! The assumption
         const std::pair<std::pair<float,float>,std::pair<float,float> > 
-            getMediumEtaPhi(const std::vector<const HepMC::GenParticle*> & particles) const;
+            getMediumEtaPhi(const std::vector<const HepMC::GenParticle*> & particles,
+                    const HepMC::GenVertex * vtx) const;
 
         //! Auxiliary method to deallocate memory of the TTree used variables
         void allocTreeVars();
