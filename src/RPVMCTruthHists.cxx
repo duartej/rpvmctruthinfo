@@ -16,6 +16,8 @@
 #include "xAODJet/Jet.h"
 #include "xAODJet/JetContainer.h"
 
+#include "TrigSteeringEvent/TrigRoiDescriptor.h"
+
 #include "FourMom/P4EEtaPhiM.h"
 #include "FourMom/P4PxPyPzE.h"
 #include "FourMomUtils/P4Helpers.h"
@@ -378,6 +380,78 @@ const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const He
         }
     }
     ATH_MSG_DEBUG("Not found any matched jet");
+    return 0;
+}
+
+std::vector<const TrigRoiDescriptor*> RPVMCTruthHists::getTriggerRoIs(const std::string & chgrpname)
+{
+    std::vector<const TrigRoiDescriptor*> v;
+
+    ATH_MSG_DEBUG(" |-- Trig::Feature<TrigRoiDescriptor> ");
+    const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
+    const Trig::FeatureContainer fecont =chgrp->features();
+    std::vector<Trig::Feature<TrigRoiDescriptor> > roifeaturevect = fecont.get<TrigRoiDescriptor>();
+    if( roifeaturevect.empty() )
+    {
+        ATH_MSG_DEBUG("    Not found TrigRoiDescriptor available instance)");
+        return v;
+    }
+    for(size_t i = 0; i < roifeaturevect.size(); ++i)
+    {
+        const TrigRoiDescriptor * roijet = roifeaturevect[i].cptr();
+        v.push_back( roijet );
+        ATH_MSG_DEBUG("    | z:" << roijet->zed()/Gaudi::Units::mm <<
+                    " eta:" << roijet->eta() << " phi:" << roijet->phi());
+    }
+    return v;
+}
+
+const TrigRoiDescriptor * RPVMCTruthHists::getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
+        const std::vector<const TrigRoiDescriptor*> & rois)
+{
+    ATH_MSG_DEBUG("Using a RoI collection of " << rois.size() 
+            << " elements trying to be matched with a collection of status-1" 
+            << " gen particles from the DV.");
+    for(auto & p : particles)
+    {
+        // keep only hadrons (just simple approach by now)
+        if( std::abs(p->pdg_id()) < 101 )
+        {
+           continue;
+        } 
+        // And with at least some pt
+        if( p->momentum().perp() < 1.0*Gaudi::Units::GeV )
+        {
+            continue;
+        }
+        ATH_MSG_DEBUG("Particle (pdgID=" << p->pdg_id() << ") Eta: " << p->momentum().eta()
+			<< " and Phi: " << p->momentum().phi());
+        // Correcting Eta and Phi, in order to be trans
+        for(auto & roi : rois)
+        {
+            if(roi == 0)
+            {
+                continue;
+            }
+            // Assuming that the DV position is negligible with respect the point where 
+            // the jets were built
+            const double roiMinusEta = roi->etaMinus();
+            const double roiPlusEta  = roi->etaPlus();
+            if( p->momentum().eta() < roi->etaMinus() || 
+                    p->momentum().eta() > roi->etaPlus() )
+            {
+                continue;
+            }
+            const double roiMinusPhi = roi->phiMinus();
+            const double roiPlusPhi  = roi->phiPlus();
+            if( p->momentum().phi() < roi->phiMinus() && 
+                    p->momentum().phi() > roi->phiPlus() )
+            {
+                continue;
+            }
+        }
+    }
+    ATH_MSG_DEBUG("Not found any matched roi");
     return 0;
 }
 

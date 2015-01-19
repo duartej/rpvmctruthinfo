@@ -20,6 +20,8 @@
 /** forward declarations */
 class TTree;
 
+class TrigRoiDescriptor;
+
 namespace HepMC
 {
     class GenParticle;
@@ -57,11 +59,15 @@ class RPVMCTruthHists : public AthAlgorithm
 
         //! Getting the RoI (jet) collection to match with MC
         std::vector<const xAOD::Jet *> getTriggerJets(const std::string & chgrname); 
+        std::vector<const TrigRoiDescriptor *> getTriggerRoIs(const std::string & chgrname); 
 
         //! Get the Jet (RoI-based) which matches in a dR any of the genp particles
         const xAOD::Jet * getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
                 const std::vector<const xAOD::Jet*> & jets);
 
+        //! Get the RoI (Jet-based) which matches in a dR any of the genpparticles
+        const TrigRoiDescriptor * getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
+                const std::vector<const TrigRoiDescriptor*> & rois);
         //! Get the displaced-vertex in the event
         std::vector<const HepMC::GenVertex *> getDisplacedVertices(const McEventCollection * const mcColl);
 
