@@ -120,6 +120,7 @@ class RPVMCTruthHists : public AthAlgorithm
         //std::map<std::string,float> m_prescales;
 
         //! Keeping track if the a jet-roi was matched with a DV-particles
+        std::map<std::string,std::vector<int> *> m_jetroipresent;
         std::map<std::string,std::vector<int> *> m_jetroimatched;
         //! Kinematics of the jet roi associated to a gen-particles from DV
         std::map<std::string,std::vector<float> *> m_jetroimatched_eta;

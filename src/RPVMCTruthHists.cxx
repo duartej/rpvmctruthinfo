@@ -147,6 +147,7 @@ StatusCode RPVMCTruthHists::initialize()
             // trigger 
             m_trigResult[trgnames] = false;
             m_jetroimatched[trgnames] = 0;
+            m_jetroipresent[trgnames] = 0;
             m_jetroimatched_eta[trgnames] = 0;
             m_jetroimatched_phi[trgnames] = 0;
             m_jetroimatched_pt[trgnames] = 0;
@@ -158,6 +159,10 @@ StatusCode RPVMCTruthHists::initialize()
     {
         m_tree->Branch(trgnames.c_str(),&(m_trigResult[trgnames]));
         // Jet Roi related (note that should be register here)
+        const std::string jetpresent(trgnames+"_isJetRoiPresent");
+        m_tree->Branch(jetpresent.c_str(),&(m_jetroipresent[trgnames]));
+        m_regIPointers.push_back(&(m_jetroipresent[trgnames]));
+        
         const std::string jetmatched(trgnames+"_isJetRoiMatched");
         m_tree->Branch(jetmatched.c_str(),&(m_jetroimatched[trgnames]));
         m_regIPointers.push_back(&(m_jetroimatched[trgnames]));
@@ -260,9 +265,12 @@ StatusCode RPVMCTruthHists::execute()
             // If there is no jet, don't waste time
             if(trgnamejets.second.size() == 0)
             {
-                (m_jetroimatched[trgname])->push_back(0);
+                //(m_jetroimatched[trgname])->push_back(0);
+                (m_jetroipresent[trgname])->push_back(0);
                 continue;
             }
+            (m_jetroipresent[trgname])->push_back(1);
+
             // Otherwise, trying to match the jet-roi with the outparticles from the DV
             const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside4mm,trgnamejets.second);
             //        trgnamejets.second);
@@ -309,13 +317,13 @@ std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string 
 {
     std::vector<const xAOD::Jet*> v;
 
-    ATH_MSG_DEBUG(" |-- Trig::Feature<xAOD::JetContainer> 'SplitJet'");
+    ATH_MSG_DEBUG(" |-- Trig::Feature<xAOD::JetContainer> ");
     const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
     const Trig::FeatureContainer fecont =chgrp->features();
-    std::vector<Trig::Feature<xAOD::JetContainer> > jetfeaturevect = fecont.get<xAOD::JetContainer>("SplitJet");
+    std::vector<Trig::Feature<xAOD::JetContainer> > jetfeaturevect = fecont.get<xAOD::JetContainer>();
     if( jetfeaturevect.empty() )
     {
-        ATH_MSG_DEBUG("    Not found xAOD::JetContainer instance 'SplitJet'");
+        ATH_MSG_DEBUG("    Not found xAOD::JetContainer available instance)");
         return v;
     }
     for(size_t i = 0; i < jetfeaturevect.size(); ++i)
