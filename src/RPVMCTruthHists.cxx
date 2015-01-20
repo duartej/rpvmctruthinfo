@@ -195,9 +195,11 @@ StatusCode RPVMCTruthHists::execute()
     // Get Trigger jets (RoI) to match with the MC-particles
     // and trigger results
     std::map<std::string,std::vector<const xAOD::Jet *> > jetsmap;
+    //std::map<std::string,std::vector<const TrigRoiDescriptor *> > jetsmap;
     for(auto & trgname: m_triggerNames)
     {
         jetsmap[trgname] = getTriggerJets(trgname);
+        //jetsmap[trgname] = getTriggerRoIs(trgname);
         m_trigResult[trgname] = getTriggerResult(trgname);
     }
 
@@ -275,6 +277,7 @@ StatusCode RPVMCTruthHists::execute()
 
             // Otherwise, trying to match the jet-roi with the outparticles from the DV
             const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside4mm,trgnamejets.second);
+            //const TrigRoiDescriptor * jetmatched = getRoIdRMatched(partindet_inside4mm,trgnamejets.second);
             //        trgnamejets.second);
             int anyJetMatched=0;
             if( jetmatched )
@@ -282,6 +285,7 @@ StatusCode RPVMCTruthHists::execute()
                 (m_jetroimatched_eta[trgname])->push_back(jetmatched->eta());
                 (m_jetroimatched_phi[trgname])->push_back(jetmatched->phi());
                 (m_jetroimatched_pt[trgname])->push_back(jetmatched->pt()/Gaudi::Units::GeV);
+                //(m_jetroimatched_pt[trgname])->push_back(jetmatched->zed()/Gaudi::Units::mm);
                 ++anyJetMatched;
             }
             // Keep track if this vertex has associated a Jet-Roi
@@ -435,20 +439,17 @@ const TrigRoiDescriptor * RPVMCTruthHists::getRoIdRMatched(const std::vector<con
             }
             // Assuming that the DV position is negligible with respect the point where 
             // the jets were built
-            const double roiMinusEta = roi->etaMinus();
-            const double roiPlusEta  = roi->etaPlus();
             if( p->momentum().eta() < roi->etaMinus() || 
                     p->momentum().eta() > roi->etaPlus() )
             {
                 continue;
             }
-            const double roiMinusPhi = roi->phiMinus();
-            const double roiPlusPhi  = roi->phiPlus();
             if( p->momentum().phi() < roi->phiMinus() && 
                     p->momentum().phi() > roi->phiPlus() )
             {
                 continue;
             }
+            return roi;
         }
     }
     ATH_MSG_DEBUG("Not found any matched roi");
