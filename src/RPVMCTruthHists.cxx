@@ -13,8 +13,13 @@
 #include "TrigDecisionTool/FeatureContainer.h"
 #include "TrigDecisionTool/Feature.h"
 
+//#include "Particle/TrackParticleContainer.h"
+
 #include "xAODJet/Jet.h"
 #include "xAODJet/JetContainer.h"
+
+#include "xAODTracking/TrackParticleContainer.h"
+#include "xAODBase/IParticle.h"
 
 #include "TrigSteeringEvent/TrigRoiDescriptor.h"
 
@@ -343,6 +348,32 @@ std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string 
         }
     }
     return v;
+}
+
+std::vector<const xAOD::TrackParticle*> RPVMCTruthHists::getTrackParticles(const std::string & chgrpname)
+{
+    std::vector<const xAOD::TrackParticle*> tv;
+
+    ATH_MSG_DEBUG(" |-- Trig::Feature<xAOD::TrigParticleContainer> ");
+    const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
+    const Trig::FeatureContainer fecont =chgrp->features();
+    std::vector<Trig::Feature<xAOD::TrackParticleContainer> > trackfeaturevect = fecont.get<xAOD::TrackParticleContainer>();
+    if( trackfeaturevect.empty() )
+    {
+        ATH_MSG_DEBUG("    Not found xAOD::TrackParticleContainer available instance)");
+        return tv;
+    }
+    for(size_t i = 0; i < trackfeaturevect.size(); ++i)
+    {
+        const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
+        for(size_t k = 0; k < tracks->size(); ++k)
+        {
+            tv.push_back( (*tracks)[k] );
+            ATH_MSG_DEBUG("    | pt:" << ((*tracks)[k])->pt()/Gaudi::Units::GeV <<
+                    " eta:" << ((*tracks)[k])->eta() << " phi:" << ((*tracks)[k])->phi());
+        }
+    }
+    return tv;
 }
 
 const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 

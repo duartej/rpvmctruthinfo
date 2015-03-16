@@ -71,6 +71,9 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Get the displaced-vertex in the event
         std::vector<const HepMC::GenVertex *> getDisplacedVertices(const McEventCollection * const mcColl);
 
+        //! Get the track collection reconstructed in the RoI (event?)
+        std::vector<const xAOD::TrackParticle*> getTrackParticles(const std::string & chgrpname);
+
         //! Get the list of particles with status 1 tracking-down the vertex (vtx)
         void getParticlesInDetector( const HepMC::GenVertex * vtx, std::vector<const HepMC::GenParticle *> & daugh );
 

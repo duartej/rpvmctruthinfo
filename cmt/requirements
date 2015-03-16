@@ -15,6 +15,8 @@ private
 use AtlasHepMC        AtlasHepMC-*        External
 use GeneratorObjects  GeneratorObjects-*  Generators
 use xAODJet           xAODJet-*           Event/xAOD
+use xAODBase          xAODBase-*          Event/xAOD
+use xAODTracking      xAODTracking-*      Event/xAOD
 use FourMom           FourMom-*           Event
 use FourMomUtils      FourMomUtils-*      Event
 end_private
