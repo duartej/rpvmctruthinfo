@@ -354,7 +354,7 @@ StatusCode RPVMCTruthHists::execute()
         for(auto & trgnametracks: tracksmap)
         {
             const std::string trgname = trgnametracks.first;
-            // If there is no tracs, don't waste time
+            // If there is no tracks, don't waste time
             if(trgnametracks.second.size() == 0)
             {
                 continue;

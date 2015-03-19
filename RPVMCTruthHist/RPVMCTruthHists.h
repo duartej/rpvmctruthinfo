@@ -137,6 +137,7 @@ class RPVMCTruthHists : public AthAlgorithm
         std::map<std::string,std::vector<float> *> m_jetroimatched_pt;
 
         //! Tracks in the accepted trigger
+        //! Hits number
         std::map<std::string,std::vector<int> *> m_track_blayer;
         std::map<std::string,std::vector<int> *> m_track_pixhits;
         std::map<std::string,std::vector<int> *> m_track_scthits;
