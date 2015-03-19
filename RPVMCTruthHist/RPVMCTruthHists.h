@@ -132,16 +132,43 @@ class RPVMCTruthHists : public AthAlgorithm
         std::map<std::string,std::vector<int> *> m_jetroipresent;
         std::map<std::string,std::vector<int> *> m_jetroimatched;
         //! Kinematics of the jet roi associated to a gen-particles from DV
+        //! FIXME: REDUNDANT FROM RoI info (See below)
         std::map<std::string,std::vector<float> *> m_jetroimatched_eta;
         std::map<std::string,std::vector<float> *> m_jetroimatched_phi;
         std::map<std::string,std::vector<float> *> m_jetroimatched_pt;
 
+        //! Trigger RoI (or Jet-RoI) information
+        std::map<std::string,std::vector<float> *> m_jetroi_et;
+        std::map<std::string,std::vector<float> *> m_jetroi_eta;
+        std::map<std::string,std::vector<float> *> m_jetroi_phi;
+
         //! Tracks in the accepted trigger
+        //! Number of reconstructed tracks in the i-RoI
+        std::map<std::string,std::vector<int> *> m_ntracks;  // FIXME: REDUNDANT...
+        //! Number of reconstructed tracks in the i-Roi with d0 higher than 1mm
+        std::map<std::string,std::vector<int> *> m_ntracksd0uppercut;
+        //! Number of reconstructed tracks in the i-RoI with d0 lower than 1mm
+        std::map<std::string,std::vector<int> *> m_ntracksd0lowercut;
+        
+        //! Index association between the (Jet-) Roi and the lower 
+        //! index of the track set corresponding to that roi:
+        //!        m_tracktoroi_index[k-1]= r
+        //!        m_tracktoroi_index[k]  = s
+        //! means
+        //!   the jet-roi "m_jetroi_xx[k]" reconstructed the set 
+        //!   of tracks: m_track_yy[r+1],...,m_track_yy[s]
+        std::map<std::string,std::vector<int> *> m_tracktoroi_index;
+        
+        //! Below track-related datamembers use the m_tracktoroi_index
+        //! notation.
         //! Hits number
         std::map<std::string,std::vector<int> *> m_track_blayer;
         std::map<std::string,std::vector<int> *> m_track_pixhits;
         std::map<std::string,std::vector<int> *> m_track_scthits;
         std::map<std::string,std::vector<int> *> m_track_trthits;
+        //! REDUNDANT... Should I?
+        std::map<std::string,std::vector<int> *> m_track_tothits;
+        std::map<std::string,std::vector<int> *> m_track_silhits;
         //! track parameters in the perigee
         std::map<std::string,std::vector<float> *> m_track_d0;
         std::map<std::string,std::vector<float> *> m_track_z0;

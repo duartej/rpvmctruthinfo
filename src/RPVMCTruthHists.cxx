@@ -159,6 +159,17 @@ StatusCode RPVMCTruthHists::initialize()
             m_jetroimatched_phi[trgnames] = 0;
             m_jetroimatched_pt[trgnames] = 0;
 
+            // RoI info (and tracks per Roi)
+            m_jetroi_et[trgnames]  = 0;
+            m_jetroi_eta[trgnames] = 0;
+            m_jetroi_phi[trgnames] = 0;
+
+            m_ntracks[trgnames] = 0;
+            m_ntracksd0uppercut[trgnames] = 0;
+            m_ntracksd0lowercut[trgnames] = 0;
+
+            m_tracktoroi_index[trgnames] = 0;
+
             // tracks hits
             m_track_blayer[trgnames] = 0;
             m_track_pixhits[trgnames] = 0;
@@ -198,6 +209,36 @@ StatusCode RPVMCTruthHists::initialize()
         m_tree->Branch(jetpt.c_str(),&(m_jetroimatched_pt[trgnames]));
         m_regFPointers.push_back(&(m_jetroimatched_pt[trgnames]));
 
+        //RoI:: kinematics and track related info
+        const std::string roiet(trgnames+"_jetroi_et");
+        m_tree->Branch(roiet.c_str(),&(m_jetroi_et[trgnames]));
+        m_regFPointers.push_back(&(m_jetroi_et[trgnames]));
+        
+        const std::string roieta(trgnames+"_jetroi_eta");
+        m_tree->Branch(roieta.c_str(),&(m_jetroi_eta[trgnames]));
+        m_regFPointers.push_back(&(m_jetroi_eta[trgnames]));
+        
+        const std::string roiphi(trgnames+"_jetroi_phi");
+        m_tree->Branch(roiphi.c_str(),&(m_jetroi_phi[trgnames]));
+        m_regFPointers.push_back(&(m_jetroi_phi[trgnames]));
+        
+        const std::string ntrk(trgnames+"_ntracks");
+        m_tree->Branch(ntrk.c_str(),&(m_ntracks[trgnames]));
+        m_regIPointers.push_back(&(m_ntracks[trgnames]));
+        
+        const std::string ntrkd0uppercut(trgnames+"_ntracksd0uppercut");
+        m_tree->Branch(ntrkd0uppercut.c_str(),&(m_ntracksd0uppercut[trgnames]));
+        m_regIPointers.push_back(&(m_ntracksd0uppercut[trgnames]));
+        
+        const std::string ntrkd0lowercut(trgnames+"_ntracksd0lowercut");
+        m_tree->Branch(ntrkd0lowercut.c_str(),&(m_ntracksd0lowercut[trgnames]));
+        m_regIPointers.push_back(&(m_ntracksd0lowercut[trgnames]));
+        
+        // RoI-tracks association
+        const std::string roitrackindex(trgnames+"_tracktoroi_index");
+        m_tree->Branch(roitrackindex.c_str(),&(m_tracktoroi_index[trgnames]));
+        m_regIPointers.push_back(&(m_tracktoroi_index[trgnames]));
+        
         //Tracks:: hits (Integer vectors)
         const std::string trkblayer(trgnames+"_tracks_blayer");
         m_tree->Branch(trkblayer.c_str(),&(m_track_blayer[trgnames]));
@@ -252,6 +293,10 @@ StatusCode RPVMCTruthHists::execute()
     std::map<std::string,std::vector<const xAOD::Jet *> > jetsmap;
     std::map<std::string,std::vector<const xAOD::TrackParticle *> > tracksmap;
     //std::map<std::string,std::vector<const TrigRoiDescriptor *> > jetsmap;
+    
+    // Allocate Tree-variables
+    allocTreeVars();
+    
     for(auto & trgname: m_triggerNames)
     {
         jetsmap[trgname] = getTriggerJets(trgname);
@@ -264,15 +309,14 @@ StatusCode RPVMCTruthHists::execute()
     // Get the displaced vertices
     const McEventCollection* mcColl(0);
     StatusCode sc = evtStore()->retrieve(mcColl, m_mcCollName);
-    if (sc.isFailure()) 
+    if(sc.isFailure()) 
 	{
+        deallocTreeVars();
         ATH_MSG_ERROR("unable to retrieve MC coll");
         return StatusCode::FAILURE;
     }
     std::vector<const HepMC::GenVertex *> dvertices = getDisplacedVertices(mcColl);
     
-    // Allocate Tree-variables
-    allocTreeVars();
     //=============================================================
     // Get LSP particle (In particle of the dv) for each vertex
     // and also store some useful info
@@ -431,6 +475,10 @@ std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string 
         for(size_t k = 0; k < jets->size(); ++k)
         {
             v.push_back( (*jets)[k] );
+            // Filling up the jet-roi related
+            m_jetroi_et[chgrpname]->push_back(((*jets)[k])->pt()/Gaudi::Units::GeV);
+            m_jetroi_eta[chgrpname]->push_back(((*jets)[k])->eta());
+            m_jetroi_phi[chgrpname]->push_back(((*jets)[k])->phi());
             ATH_MSG_DEBUG("    | pt:" << ((*jets)[k])->pt()/Gaudi::Units::GeV <<
                     " eta:" << ((*jets)[k])->eta() << " phi:" << ((*jets)[k])->phi());
         }
@@ -451,8 +499,13 @@ std::vector<const xAOD::TrackParticle*> RPVMCTruthHists::getTrackParticles(const
         ATH_MSG_DEBUG("    Not found xAOD::TrackParticleContainer available instance)");
         return tv;
     }
+    
+    int indexfirsttrack = 0;
     for(size_t i = 0; i < trackfeaturevect.size(); ++i)
     {
+        // The index of the first track associated to the i-Roi
+        m_tracktoroi_index[chgrpname]->push_back(indexfirsttrack);
+        // For the i-RoI, the associated tracks are 
         const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
         for(size_t k = 0; k < tracks->size(); ++k)
         {
@@ -460,6 +513,8 @@ std::vector<const xAOD::TrackParticle*> RPVMCTruthHists::getTrackParticles(const
             ATH_MSG_DEBUG("    | pt:" << ((*tracks)[k])->pt()/Gaudi::Units::GeV <<
                     " eta:" << ((*tracks)[k])->eta() << " phi:" << ((*tracks)[k])->phi());
         }
+        // Update the next first index for the next RoI
+        indexfirsttrack += tracks->size();
     }
     return tv;
 }
@@ -523,6 +578,10 @@ std::vector<const TrigRoiDescriptor*> RPVMCTruthHists::getTriggerRoIs(const std:
     {
         const TrigRoiDescriptor * roijet = roifeaturevect[i].cptr();
         v.push_back( roijet );
+        // Filling up the jet-roi related
+        m_jetroi_et[chgrpname]->push_back(-999); // FIXME: How to extract this info from a RoI?
+        m_jetroi_eta[chgrpname]->push_back(roijet->eta());
+        m_jetroi_phi[chgrpname]->push_back(roijet->phi());
         ATH_MSG_DEBUG("    | z:" << roijet->zed()/Gaudi::Units::mm <<
                     " eta:" << roijet->eta() << " phi:" << roijet->phi());
     }
