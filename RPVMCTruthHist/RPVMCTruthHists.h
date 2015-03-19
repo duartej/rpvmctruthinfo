@@ -135,6 +135,18 @@ class RPVMCTruthHists : public AthAlgorithm
         std::map<std::string,std::vector<float> *> m_jetroimatched_eta;
         std::map<std::string,std::vector<float> *> m_jetroimatched_phi;
         std::map<std::string,std::vector<float> *> m_jetroimatched_pt;
+
+        //! Tracks in the accepted trigger
+        std::map<std::string,std::vector<int> *> m_track_blayer;
+        std::map<std::string,std::vector<int> *> m_track_pixhits;
+        std::map<std::string,std::vector<int> *> m_track_scthits;
+        std::map<std::string,std::vector<int> *> m_track_trthits;
+        //! track parameters in the perigee
+        std::map<std::string,std::vector<float> *> m_track_d0;
+        std::map<std::string,std::vector<float> *> m_track_z0;
+        std::map<std::string,std::vector<float> *> m_track_pt;
+        std::map<std::string,std::vector<float> *> m_track_eta;
+        std::map<std::string,std::vector<float> *> m_track_phi;
     
         // Auxiliary member to manage memory (de)allocation
         std::vector<std::vector<int>** > m_regIPointers;

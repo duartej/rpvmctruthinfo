@@ -151,13 +151,25 @@ StatusCode RPVMCTruthHists::initialize()
         {
             m_triggerNames.push_back(trgnames);
             
-            // trigger 
+            // trigger matching
             m_trigResult[trgnames] = false;
             m_jetroimatched[trgnames] = 0;
             m_jetroipresent[trgnames] = 0;
             m_jetroimatched_eta[trgnames] = 0;
             m_jetroimatched_phi[trgnames] = 0;
             m_jetroimatched_pt[trgnames] = 0;
+
+            // tracks hits
+            m_track_blayer[trgnames] = 0;
+            m_track_pixhits[trgnames] = 0;
+            m_track_scthits[trgnames] = 0;
+            m_track_trthits[trgnames] = 0;
+            // tracks:: parameters
+            m_track_d0[trgnames] = 0;
+            m_track_z0[trgnames] = 0;
+            m_track_pt[trgnames] = 0;
+            m_track_eta[trgnames] = 0;
+            m_track_phi[trgnames] = 0;
         }
     }
     // Now using addresses (doing in two phases in order to avoid potential re-allocation
@@ -185,6 +197,44 @@ StatusCode RPVMCTruthHists::initialize()
         const std::string jetpt(trgnames+"_jetRoiMatched_pt");
         m_tree->Branch(jetpt.c_str(),&(m_jetroimatched_pt[trgnames]));
         m_regFPointers.push_back(&(m_jetroimatched_pt[trgnames]));
+
+        //Tracks:: hits (Integer vectors)
+        const std::string trkblayer(trgnames+"_tracks_blayer");
+        m_tree->Branch(trkblayer.c_str(),&(m_track_blayer[trgnames]));
+        m_regIPointers.push_back(&(m_track_blayer[trgnames]));
+        
+        const std::string trkpixhits(trgnames+"_tracks_pixhits");
+        m_tree->Branch(trkpixhits.c_str(),&(m_track_pixhits[trgnames]));
+        m_regIPointers.push_back(&(m_track_pixhits[trgnames]));
+
+        const std::string trkscthits(trgnames+"_tracks_scthits");
+        m_tree->Branch(trkscthits.c_str(),&(m_track_scthits[trgnames]));
+        m_regIPointers.push_back(&(m_track_scthits[trgnames]));
+        
+        const std::string trktrthits(trgnames+"_tracks_trthits");
+        m_tree->Branch(trktrthits.c_str(),&(m_track_trthits[trgnames]));
+        m_regIPointers.push_back(&(m_track_trthits[trgnames]));
+        
+        //Tracks:: parameters at perigee (float vectors)
+        const std::string trkd0(trgnames+"_tracks_d0");
+        m_tree->Branch(trkd0.c_str(),&(m_track_d0[trgnames]));
+        m_regFPointers.push_back(&(m_track_d0[trgnames]));
+
+        const std::string trkz0(trgnames+"_tracks_z0");
+        m_tree->Branch(trkz0.c_str(),&(m_track_z0[trgnames]));
+        m_regFPointers.push_back(&(m_track_z0[trgnames]));
+
+        const std::string trkpt(trgnames+"_tracks_pt");
+        m_tree->Branch(trkpt.c_str(),&(m_track_pt[trgnames]));
+        m_regFPointers.push_back(&(m_track_pt[trgnames]));
+        
+        const std::string trketa(trgnames+"_tracks_eta");
+        m_tree->Branch(trketa.c_str(),&(m_track_eta[trgnames]));
+        m_regFPointers.push_back(&(m_track_eta[trgnames]));
+        
+        const std::string trkphi(trgnames+"_tracks_phi");
+        m_tree->Branch(trkphi.c_str(),&(m_track_phi[trgnames]));
+        m_regFPointers.push_back(&(m_track_phi[trgnames]));
     }
   
     return StatusCode::SUCCESS;
@@ -200,10 +250,12 @@ StatusCode RPVMCTruthHists::execute()
     // Get Trigger jets (RoI) to match with the MC-particles
     // and trigger results
     std::map<std::string,std::vector<const xAOD::Jet *> > jetsmap;
+    std::map<std::string,std::vector<const xAOD::TrackParticle *> > tracksmap;
     //std::map<std::string,std::vector<const TrigRoiDescriptor *> > jetsmap;
     for(auto & trgname: m_triggerNames)
     {
         jetsmap[trgname] = getTriggerJets(trgname);
+        tracksmap[trgname] = getTrackParticles(trgname);
         //jetsmap[trgname] = getTriggerRoIs(trgname);
         m_trigResult[trgname] = getTriggerResult(trgname);
     }
@@ -297,6 +349,42 @@ StatusCode RPVMCTruthHists::execute()
 			// The vector is filled (0--there's no match, 1--there's match) 
 			// in the DV order. 
             (m_jetroimatched[trgname])->push_back(anyJetMatched);
+        }
+        // Trigger info:: Tracks of the selected triggers
+        for(auto & trgnametracks: tracksmap)
+        {
+            const std::string trgname = trgnametracks.first;
+            // If there is no tracs, don't waste time
+            if(trgnametracks.second.size() == 0)
+            {
+                continue;
+            }
+            // Otherwise filling the info
+            const std::vector<const xAOD::TrackParticle *> tracks = trgnametracks.second;
+            for(auto & track: tracks)
+            {
+                uint8_t nblayer = 0;
+                track->summaryValue(nblayer, xAOD::numberOfBLayerHits);
+                (m_track_blayer[trgname])->push_back(nblayer);
+
+                uint8_t npixhits = 0;
+                track->summaryValue(npixhits, xAOD::numberOfPixelHits);
+                (m_track_pixhits[trgname])->push_back(npixhits);
+                
+                uint8_t nscthits = 0;
+                track->summaryValue(nscthits, xAOD::numberOfSCTHits);
+                (m_track_scthits[trgname])->push_back(nscthits);
+
+                uint8_t ntrthits = 0;
+                track->summaryValue(ntrthits, xAOD::numberOfTRTHits);
+                (m_track_trthits[trgname])->push_back(ntrthits);
+
+                (m_track_d0[trgname])->push_back(track->d0());
+                (m_track_z0[trgname])->push_back(track->z0());
+                (m_track_pt[trgname])->push_back(track->pt());
+                (m_track_eta[trgname])->push_back(track->eta());
+                (m_track_phi[trgname])->push_back(track->phi());
+            }
         }
     }
     // Persistency and freeing memory
