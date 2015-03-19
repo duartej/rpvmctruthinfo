@@ -691,7 +691,7 @@ bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC:
 
 bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC::GenVertex * vtx)
 {
-    return isDecayedAround(p,vtx,4.0*Gaudi::Units::mm);
+    return isDecayedAround(p,vtx,1.0*Gaudi::Units::mm);
 }
 
 void RPVMCTruthHists::storeGenParticlesInfo(const std::vector<const HepMC::GenParticle*> & particles)
