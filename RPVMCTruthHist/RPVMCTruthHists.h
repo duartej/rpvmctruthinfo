@@ -58,7 +58,9 @@ class RPVMCTruthHists : public AthAlgorithm
         bool getTriggerResult(const std::string & chgrname);
 
         //! Getting the RoI (jet) collection to match with MC
+        std::vector<const xAOD::Jet *> getTriggerJets(); // track-based triggers
         std::vector<const xAOD::Jet *> getTriggerJets(const std::string & chgrname); 
+        std::vector<const TrigRoiDescriptor *> getTriggerRoIs();  // track-based triggers
         std::vector<const TrigRoiDescriptor *> getTriggerRoIs(const std::string & chgrname); 
 
         //! Get the Jet (RoI-based) which matches in a dR any of the genp particles
@@ -71,8 +73,9 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Get the displaced-vertex in the event
         std::vector<const HepMC::GenVertex *> getDisplacedVertices(const McEventCollection * const mcColl);
 
-        //! Get the track collection reconstructed in the RoI (event?)
-        std::vector<const xAOD::TrackParticle*> getTrackParticles(const std::string & chgrpname);
+        //! Get the track collection reconstructed in the RoI
+        std::vector<std::vector<const xAOD::TrackParticle*> > getTrackParticles(); // Track-based trigger
+        std::vector<std::vector<const xAOD::TrackParticle*> > getTrackParticles(const std::string & chgrpname);
 
         //! Get the list of particles with status 1 tracking-down the vertex (vtx)
         void getParticlesInDetector( const HepMC::GenVertex * vtx, std::vector<const HepMC::GenParticle *> & daugh );
@@ -129,26 +132,30 @@ class RPVMCTruthHists : public AthAlgorithm
         //std::map<std::string,float> m_prescales;
 
         //! Keeping track if the a jet-roi was matched with a DV-particles
-        std::map<std::string,std::vector<int> *> m_jetroipresent;
-        std::map<std::string,std::vector<int> *> m_jetroimatched;
+        std::vector<int> * m_jetroipresent;
+        std::vector<int> * m_jetroimatched;
         //! Kinematics of the jet roi associated to a gen-particles from DV
         //! FIXME: REDUNDANT FROM RoI info (See below)
-        std::map<std::string,std::vector<float> *> m_jetroimatched_eta;
-        std::map<std::string,std::vector<float> *> m_jetroimatched_phi;
-        std::map<std::string,std::vector<float> *> m_jetroimatched_pt;
+        std::vector<float> * m_jetroimatched_eta;
+        std::vector<float> * m_jetroimatched_phi;
+        std::vector<float> * m_jetroimatched_pt;
 
         //! Trigger RoI (or Jet-RoI) information
-        std::map<std::string,std::vector<float> *> m_jetroi_et;
-        std::map<std::string,std::vector<float> *> m_jetroi_eta;
-        std::map<std::string,std::vector<float> *> m_jetroi_phi;
+        std::vector<float> * m_jetroi_et;
+        std::vector<float> * m_jetroi_eta;
+        std::vector<float> * m_jetroi_phi;
 
-        //! Tracks in the accepted trigger
+        //! Tracks in the accepted trigger:
         //! Number of reconstructed tracks in the i-RoI
-        std::map<std::string,std::vector<int> *> m_ntracks;  // FIXME: REDUNDANT...
+        std::vector<int> * m_ntracks;  // FIXME: REDUNDANT...
         //! Number of reconstructed tracks in the i-Roi with d0 higher than 1mm
-        std::map<std::string,std::vector<int> *> m_ntracksd0uppercut;
+        std::vector<int> * m_ntracksd0uppercut;
         //! Number of reconstructed tracks in the i-RoI with d0 lower than 1mm
-        std::map<std::string,std::vector<int> *> m_ntracksd0lowercut;
+        std::vector<int> * m_ntracksd0lowercut;
+        //! Sum_pt of the reconstructed tracks in the i-Roi with d0 higher than 1mm
+        std::vector<float> * m_sumpttracksd0uppercut;
+        //! Sum_pt of the reconstructed tracks in the i-RoI with d0 lower than 1mm
+        std::vector<float> * m_sumpttracksd0lowercut;
         
         //! Index association between the (Jet-) Roi and the lower 
         //! index of the track set corresponding to that roi:
@@ -157,24 +164,24 @@ class RPVMCTruthHists : public AthAlgorithm
         //! means
         //!   the jet-roi "m_jetroi_xx[k]" reconstructed the set 
         //!   of tracks: m_track_yy[r+1],...,m_track_yy[s]
-        std::map<std::string,std::vector<int> *> m_tracktoroi_index;
+        std::vector<int> * m_tracktoroi_index;
         
         //! Below track-related datamembers use the m_tracktoroi_index
         //! notation.
         //! Hits number
-        std::map<std::string,std::vector<int> *> m_track_blayer;
-        std::map<std::string,std::vector<int> *> m_track_pixhits;
-        std::map<std::string,std::vector<int> *> m_track_scthits;
-        std::map<std::string,std::vector<int> *> m_track_trthits;
+        std::vector<int> * m_track_blayer;
+        std::vector<int> * m_track_pixhits;
+        std::vector<int> * m_track_scthits;
+        std::vector<int> * m_track_trthits;
         //! REDUNDANT... Should I?
-        std::map<std::string,std::vector<int> *> m_track_tothits;
-        std::map<std::string,std::vector<int> *> m_track_silhits;
+        std::vector<int> * m_track_tothits;
+        std::vector<int> * m_track_silhits;
         //! track parameters in the perigee
-        std::map<std::string,std::vector<float> *> m_track_d0;
-        std::map<std::string,std::vector<float> *> m_track_z0;
-        std::map<std::string,std::vector<float> *> m_track_pt;
-        std::map<std::string,std::vector<float> *> m_track_eta;
-        std::map<std::string,std::vector<float> *> m_track_phi;
+        std::vector<float> * m_track_d0;
+        std::vector<float> * m_track_z0;
+        std::vector<float> * m_track_pt;
+        std::vector<float> * m_track_eta;
+        std::vector<float> * m_track_phi;
     
         // Auxiliary member to manage memory (de)allocation
         std::vector<std::vector<int>** > m_regIPointers;
