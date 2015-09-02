@@ -54,7 +54,7 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_phi(0),
     m_betagamma(0),
     m_nTrk(0),
-    m_nTrk4mm(0),
+    m_nTrk1mm(0),
     m_genpfromdv_pdgId(0),
     m_genpfromdv_eta(0),
     m_genpfromdv_phi(0),
@@ -101,7 +101,7 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     // Register all the pointers related with the ttree variables
     // Integer vectors
     m_regIPointers.push_back(&m_nTrk);
-    m_regIPointers.push_back(&m_nTrk4mm);
+    m_regIPointers.push_back(&m_nTrk1mm);
     m_regIPointers.push_back(&m_genpfromdv_pdgId);
 
     m_regIPointers.push_back(&m_jetroipresent);
@@ -190,8 +190,8 @@ StatusCode RPVMCTruthHists::initialize()
     m_tree->Branch("betagamma",&m_betagamma);
     // Extra info
     m_tree->Branch("nTrk",&m_nTrk);
-    m_tree->Branch("nTrk4mm",&m_nTrk4mm);
-    // Kinematics of gen-particles undecayed from the DV < 4mm
+    m_tree->Branch("nTrk1mm",&m_nTrk1mm);
+    // Kinematics of gen-particles undecayed from the DV < 1mm
     m_tree->Branch("genpfromdv_pdgId",&m_genpfromdv_pdgId);
     m_tree->Branch("genpfromdv_eta",&m_genpfromdv_eta);
     m_tree->Branch("genpfromdv_phi",&m_genpfromdv_phi);
@@ -331,18 +331,18 @@ StatusCode RPVMCTruthHists::execute()
         m_nTrk->push_back(partindet.size());
         ATH_MSG_DEBUG("Number of out-particles: " << vertex->particles_out_size() );
         ATH_MSG_DEBUG("Number of out-particles (status=1): " << partindet.size());
-        // --- Inside 4mm around the vertex
-        std::vector<const HepMC::GenParticle*> partindet_inside4mm;
+        // --- Inside 1mm around the vertex
+        std::vector<const HepMC::GenParticle*> partindet_inside1mm;
         for(auto & dp: partindet)
         {
             if(isDecayedAround(dp,vertex))
             {
-                partindet_inside4mm.push_back(dp);
+                partindet_inside1mm.push_back(dp);
             }
         }
-        m_nTrk4mm->push_back(partindet_inside4mm.size());
+        m_nTrk1mm->push_back(partindet_inside1mm.size());
         // store some info from this particles
-        storeGenParticlesInfo(partindet_inside4mm);
+        storeGenParticlesInfo(partindet_inside1mm);
         
         if(jets.size() == 0)
         {
@@ -353,8 +353,8 @@ StatusCode RPVMCTruthHists::execute()
 
         // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
         // phi of the DV-particles
-        const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside4mm,jets);
-        //const TrigRoiDescriptor * jetmatched = getRoIdRMatched(partindet_inside4mm,trgnamejets.second);
+        const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside1mm,jets);
+        //const TrigRoiDescriptor * jetmatched = getRoIdRMatched(partindet_inside1mm,trgnamejets.second);
         //        trgnamejets.second);
         int anyJetMatched=0;
         if( jetmatched )
@@ -489,6 +489,8 @@ std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string 
         ATH_MSG_DEBUG("    Not found xAOD::JetContainer available instance)");
         return v;
     }
+    
+    ATH_MSG_DEBUG(" |-- Found " << jetfeaturevect.size() << " jet-collections (or equivalently RoIs)");
     for(size_t i = 0; i < jetfeaturevect.size(); ++i)
     {
         const xAOD::JetContainer * jets = jetfeaturevect[i].cptr();
@@ -523,12 +525,14 @@ std::vector<std::vector<const xAOD::TrackParticle*> > RPVMCTruthHists::getTrackP
     }
     
     // Building the vector of tracks
+    ATH_MSG_DEBUG(" |-- Found " << trackfeaturevect.size() << " track-collections");
     for(size_t i = 0; i < trackfeaturevect.size(); ++i)
     {
         // For the i-RoI, the associated tracks are 
         const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
         const size_t trackssize = tracks->size();
         std::vector<const xAOD::TrackParticle*> tv;
+        ATH_MSG_DEBUG("     |-- Number of tracks for the " << i << "-RoI: " << trackssize);
         for(size_t k=0; k < trackssize; ++k)
         {
             tv.push_back( (*tracks)[k] );
