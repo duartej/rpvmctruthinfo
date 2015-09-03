@@ -265,7 +265,6 @@ StatusCode RPVMCTruthHists::execute()
     }
 
     // Retrieve the Roi/Jets related with the track-based triggers
-    //const std::vector<const xAOD::Jet *> jets = getTriggerJets();
     jet_tracks_per_roi_t jets_and_tracks = getJetsAndTracks();
     const std::vector<const xAOD::Jet *> jets = jets_and_tracks.first;
     
@@ -283,7 +282,6 @@ StatusCode RPVMCTruthHists::execute()
         m_jetroi_phi->push_back(jet->phi());
     }
     // Trigger info:: Tracks of the track-based triggers
-    //const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = getTrackParticles();
     const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = jets_and_tracks.second;
     int indexfirsttrack = 0;
     for(auto & tracks: tracks_per_roi)
@@ -307,12 +305,12 @@ StatusCode RPVMCTruthHists::execute()
             if( track->d0() < 1.0*Gaudi::Units::mm )
             {
                 ++ntracksd0low;
-                sumptd0low += (track->pt()*Gaudi::Units::Mev/Gaudi::Units::GeV);
+                sumptd0low += track->pt();
             }
             else
             {
                 ++ntracksd0high;
-                sumptd0high += (track->pt()*Gaudi::Units::Mev/Gaudi::Units::GeV);
+                sumptd0high += track->pt();
             }
             uint8_t nblayer = 0;
             track->summaryValue(nblayer, xAOD::numberOfBLayerHits);
@@ -344,9 +342,9 @@ StatusCode RPVMCTruthHists::execute()
         m_ntracks->push_back(tracks.size());
         // added-up track d0 related info per RoI
         m_ntracksd0uppercut->push_back(ntracksd0high);
-        m_sumpttracksd0uppercut->push_back(sumptd0high);
+        m_sumpttracksd0uppercut->push_back(sumptd0high*Gaudi::Units::MeV/Gaudi::Units::GeV);
         m_ntracksd0lowercut->push_back(ntracksd0low);
-        m_sumpttracksd0lowercut->push_back(sumptd0low);
+        m_sumpttracksd0lowercut->push_back(sumptd0low*Gaudi::Units::MeV/Gaudi::Units::GeV);
         // added-up hits per Roi
         m_track_blayer->push_back(nblayer_roi);
         m_track_pixhits->push_back(npixhits_roi);
