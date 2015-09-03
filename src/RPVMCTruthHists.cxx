@@ -522,31 +522,32 @@ jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks(const std::string & chgrp
     std::vector<const xAOD::Jet*> v;
     std::vector<std::vector<const xAOD::TrackParticle*> > tv_per_roi;
 
-    ATH_MSG_DEBUG(" |-- Trig::Feature Extraction (through getCombinations method)");
+    ATH_MSG_DEBUG("|-- Trig::Feature Extraction (through getCombinations method)");
     const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
     const Trig::FeatureContainer fecont =chgrp->features();
     const std::vector<Trig::Combination> combfeaturevect = fecont.getCombinations();
     // Loop over the RoIs??
-    ATH_MSG_DEBUG("  |- Size of the Combination of features vector: " << combfeaturevect.size());  
-    ATH_MSG_DEBUG("  (Equivalent to the number of RoIs???)");
+    ATH_MSG_DEBUG(" |- Size of the Combination of features vector, i.e. number of RoIs: " 
+            << combfeaturevect.size());  
     unsigned int iRoI = 0;
     for( auto & combination : combfeaturevect)
     {
+        ATH_MSG_DEBUG("  |- Found at RoI #" << iRoI);
         // Get the Jets
         std::vector<Trig::Feature<xAOD::JetContainer> > jetfeaturevect = combination.get<xAOD::JetContainer>();
         if( jetfeaturevect.empty() )
         {
-            ATH_MSG_DEBUG("    Not found xAOD::JetContainer available instance)");
+            ATH_MSG_DEBUG("Not found xAOD::JetContainer available instance)");
             return jet_tracks_per_roi_t(v,tv_per_roi);
         }
-        ATH_MSG_DEBUG(" |-- Found " << jetfeaturevect.size() << " jet-collections (or equivalently RoIs)");
+        ATH_MSG_DEBUG("   * " << jetfeaturevect.size() << " jet-collections");
         for(size_t i = 0; i < jetfeaturevect.size(); ++i)
         {
             const xAOD::JetContainer * jets = jetfeaturevect[i].cptr();
             for(size_t k = 0; k < jets->size(); ++k)
             {
                 v.push_back( (*jets)[k] );
-                ATH_MSG_DEBUG("    | pt:" << ((*jets)[k])->pt()/Gaudi::Units::GeV <<
+                ATH_MSG_VERBOSE("      pt:" << ((*jets)[k])->pt()/Gaudi::Units::GeV <<
                         " eta:" << ((*jets)[k])->eta() << " phi:" << ((*jets)[k])->phi());
             }
         }
@@ -554,22 +555,22 @@ jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks(const std::string & chgrp
         std::vector<Trig::Feature<xAOD::TrackParticleContainer> > trackfeaturevect = combination.get<xAOD::TrackParticleContainer>();
         if( trackfeaturevect.empty() )
         {
-            ATH_MSG_DEBUG("    Not found xAOD::TrackParticleContainer available instance)");
+            ATH_MSG_DEBUG("Not found xAOD::TrackParticleContainer available instance)");
             return jet_tracks_per_roi_t(v,tv_per_roi);
         }
         // Building the vector of tracks
-        ATH_MSG_DEBUG(" |-- Found " << trackfeaturevect.size() << " track-collections");
+        ATH_MSG_DEBUG("   * " << trackfeaturevect.size() << " track-collections");
         for(size_t i = 0; i < trackfeaturevect.size(); ++i)
         {
             // For the i-RoI, the associated tracks are 
             const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
             const size_t trackssize = tracks->size();
             std::vector<const xAOD::TrackParticle*> tv;
-            ATH_MSG_DEBUG("   |-- Number of tracks for the " << iRoI << "-RoI: " << trackssize);
+            ATH_MSG_DEBUG("    with "<< trackssize << " tracks");
             for(size_t k=0; k < trackssize; ++k)
             {
                 tv.push_back( (*tracks)[k] );
-                ATH_MSG_DEBUG("    | pt:" << ((*tracks)[k])->pt()/Gaudi::Units::GeV <<
+                ATH_MSG_VERBOSE("        pt:" << ((*tracks)[k])->pt()/Gaudi::Units::GeV <<
                         " eta:" << ((*tracks)[k])->eta() << " phi:" << ((*tracks)[k])->phi());
             }
             tv_per_roi.push_back(tv);
