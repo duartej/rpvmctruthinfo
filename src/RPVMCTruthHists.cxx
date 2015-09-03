@@ -273,23 +273,16 @@ StatusCode RPVMCTruthHists::execute()
         m_trigResult[trgname] = getTriggerResult(trgname);
     }
 
-    //=============================================================
-    // Get the displaced vertices
-    const McEventCollection* mcColl(0);
-    StatusCode sc = evtStore()->retrieve(mcColl, m_mcCollName);
-    if(sc.isFailure()) 
-	{
-        deallocTreeVars();
-        ATH_MSG_ERROR("unable to retrieve MC coll");
-        return StatusCode::FAILURE;
-    }
-    std::vector<const HepMC::GenVertex *> dvertices = getDisplacedVertices(mcColl);
-    
     // Retrieve the Roi/Jets related with the track-based triggers
-    const std::vector<const xAOD::Jet *> jets = getTriggerJets();
+    //const std::vector<const xAOD::Jet *> jets = getTriggerJets();
+    jet_tracks_per_roi_t jets_and_tracks = getJetsAndTracks();
+    const std::vector<const xAOD::Jet *> jets = jets_and_tracks.first;
     
     // Allocate Tree-variables
     allocTreeVars();
+    
+    //============================================================
+    // RoI-related info 
     
     // Filling up the jet-roi related tree variables
     for(auto & jet: jets)
@@ -298,81 +291,9 @@ StatusCode RPVMCTruthHists::execute()
         m_jetroi_eta->push_back(jet->eta());
         m_jetroi_phi->push_back(jet->phi());
     }
-    
-    //=============================================================
-    // Get LSP particle (In particle of the dv) for each vertex
-    // and also store some useful info
-    //std::vector<const HepMC::GenParticle *> lsps;
-    //std::vector<const HepMC::GenVertex *> prodvtx;
-    //std::vector<std::vector<const HepMC::GenParticle *> > outparticles;
-    for(auto & vertex : dvertices)
-    {
-        const HepMC::GenParticle * _lsp =  *(vertex->particles_in_const_begin()); 
-        //lsps.push_back( _lsp );
-        // LSP kinematics
-        m_eta->push_back( _lsp->momentum().eta() );
-        m_phi->push_back( _lsp->momentum().phi() );
-        const float betagamma = (_lsp->momentum().rho()/_lsp->momentum().m());
-        m_betagamma->push_back( betagamma );
-        // decay vertex
-        m_dvX->push_back( vertex->point3d().x()/Gaudi::Units::mm );
-        m_dvY->push_back( vertex->point3d().y()/Gaudi::Units::mm );
-        m_dvZ->push_back( vertex->point3d().z()/Gaudi::Units::mm );
-        // production vertex (Primary vertex)
-        const HepMC::GenVertex * _prodvtx = _lsp->production_vertex();
-        //prodvtx.push_back(_prodvtx);
-        m_vxLSP->push_back( _prodvtx->point3d().x()/Gaudi::Units::mm );
-        m_vyLSP->push_back( _prodvtx->point3d().y()/Gaudi::Units::mm );
-        m_vzLSP->push_back( _prodvtx->point3d().z()/Gaudi::Units::mm );
-        
-        // Searching for out-particles which actually leaves an imprint in the detector 
-        std::vector<const HepMC::GenParticle*> partindet;
-        getParticlesInDetector(vertex,partindet);
-        m_nTrk->push_back(partindet.size());
-        ATH_MSG_DEBUG("Number of out-particles: " << vertex->particles_out_size() );
-        ATH_MSG_DEBUG("Number of out-particles (status=1): " << partindet.size());
-        // --- Inside 1mm around the vertex
-        std::vector<const HepMC::GenParticle*> partindet_inside1mm;
-        for(auto & dp: partindet)
-        {
-            if(isDecayedAround(dp,vertex))
-            {
-                partindet_inside1mm.push_back(dp);
-            }
-        }
-        m_nTrk1mm->push_back(partindet_inside1mm.size());
-        // store some info from this particles
-        storeGenParticlesInfo(partindet_inside1mm);
-        
-        if(jets.size() == 0)
-        {
-            m_jetroipresent->push_back(0);
-            continue;
-        }
-        m_jetroipresent->push_back(1);
-
-        // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
-        // phi of the DV-particles
-        const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside1mm,jets);
-        //const TrigRoiDescriptor * jetmatched = getRoIdRMatched(partindet_inside1mm,trgnamejets.second);
-        //        trgnamejets.second);
-        int anyJetMatched=0;
-        if( jetmatched )
-        {
-            m_jetroimatched_eta->push_back(jetmatched->eta());
-            m_jetroimatched_phi->push_back(jetmatched->phi());
-            m_jetroimatched_pt->push_back(jetmatched->pt()/Gaudi::Units::GeV);
-            //m_jetroimatched_pt->push_back(jetmatched->zed()/Gaudi::Units::mm);
-            ++anyJetMatched;
-        }
-        // Keep track if this vertex has associated a Jet-Roi
-        // The vector is filled (0--there's no match, 1--there's match) 
-        // in the DV order. 
-        m_jetroimatched->push_back(anyJetMatched);
-    }
-
     // Trigger info:: Tracks of the track-based triggers
-    const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = getTrackParticles();
+    //const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = getTrackParticles();
+    const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = jets_and_tracks.second;
     int indexfirsttrack = 0;
     for(auto & tracks: tracks_per_roi)
     {
@@ -445,6 +366,93 @@ StatusCode RPVMCTruthHists::execute()
         // Update the next first index for the next RoI
         indexfirsttrack += tracks.size();
     }
+    
+    //=============================================================
+    // MONTE CARLO-SIGNAL ONLY
+    // FIXME--- NEEDS TO DETERMINE WHEN IS MONTECARLO and when is 
+    //          SIGNAL (to avoid entering the loop when bkg)
+    
+    //=============================================================
+    // Get the displaced vertices 
+    const McEventCollection* mcColl(0);
+    StatusCode sc = evtStore()->retrieve(mcColl, m_mcCollName);
+    if(sc.isFailure()) 
+	{
+        deallocTreeVars();
+        ATH_MSG_ERROR("unable to retrieve MC coll");
+        return StatusCode::FAILURE;
+    }
+    std::vector<const HepMC::GenVertex *> dvertices = getDisplacedVertices(mcColl);
+
+    //=============================================================
+    // Get LSP particle (In particle of the dv) for each vertex
+    // and also store some useful info
+    for(auto & vertex : dvertices)
+    {
+        const HepMC::GenParticle * _lsp =  *(vertex->particles_in_const_begin()); 
+        //lsps.push_back( _lsp );
+        // LSP kinematics
+        m_eta->push_back( _lsp->momentum().eta() );
+        m_phi->push_back( _lsp->momentum().phi() );
+        const float betagamma = (_lsp->momentum().rho()/_lsp->momentum().m());
+        m_betagamma->push_back( betagamma );
+        // decay vertex
+        m_dvX->push_back( vertex->point3d().x()/Gaudi::Units::mm );
+        m_dvY->push_back( vertex->point3d().y()/Gaudi::Units::mm );
+        m_dvZ->push_back( vertex->point3d().z()/Gaudi::Units::mm );
+        // production vertex (Primary vertex)
+        const HepMC::GenVertex * _prodvtx = _lsp->production_vertex();
+        //prodvtx.push_back(_prodvtx);
+        m_vxLSP->push_back( _prodvtx->point3d().x()/Gaudi::Units::mm );
+        m_vyLSP->push_back( _prodvtx->point3d().y()/Gaudi::Units::mm );
+        m_vzLSP->push_back( _prodvtx->point3d().z()/Gaudi::Units::mm );
+        
+        // Searching for out-particles which actually leaves an imprint in the detector 
+        std::vector<const HepMC::GenParticle*> partindet;
+        getParticlesInDetector(vertex,partindet);
+        m_nTrk->push_back(partindet.size());
+        ATH_MSG_DEBUG("Number of out-particles: " << vertex->particles_out_size() );
+        ATH_MSG_DEBUG("Number of out-particles (status=1): " << partindet.size());
+        // --- Inside 1mm around the vertex
+        std::vector<const HepMC::GenParticle*> partindet_inside1mm;
+        for(auto & dp: partindet)
+        {
+            if(isDecayedAround(dp,vertex))
+            {
+                partindet_inside1mm.push_back(dp);
+            }
+        }
+        m_nTrk1mm->push_back(partindet_inside1mm.size());
+        // store some info from this particles
+        storeGenParticlesInfo(partindet_inside1mm);
+        
+        if(jets.size() == 0)
+        {
+            m_jetroipresent->push_back(0);
+            continue;
+        }
+        m_jetroipresent->push_back(1);
+
+        // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
+        // phi of the DV-particles
+        const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside1mm,jets);
+        //const TrigRoiDescriptor * jetmatched = getRoIdRMatched(partindet_inside1mm,trgnamejets.second);
+        //        trgnamejets.second);
+        int anyJetMatched=0;
+        if( jetmatched )
+        {
+            m_jetroimatched_eta->push_back(jetmatched->eta());
+            m_jetroimatched_phi->push_back(jetmatched->phi());
+            m_jetroimatched_pt->push_back(jetmatched->pt()/Gaudi::Units::GeV);
+            //m_jetroimatched_pt->push_back(jetmatched->zed()/Gaudi::Units::mm);
+            ++anyJetMatched;
+        }
+        // Keep track if this vertex has associated a Jet-Roi
+        // The vector is filled (0--there's no match, 1--there's match) 
+        // in the DV order. 
+        m_jetroimatched->push_back(anyJetMatched);
+    }
+
     // Persistency and freeing memory
     m_tree->Fill();
     deallocTreeVars();
@@ -504,6 +512,73 @@ std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string 
     return v;
 }
 
+jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks()
+{
+    return this->getJetsAndTracks(TRACK_BASED_TRGS);
+}
+
+jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks(const std::string & chgrpname=TRACK_BASED_TRGS)
+{
+    std::vector<const xAOD::Jet*> v;
+    std::vector<std::vector<const xAOD::TrackParticle*> > tv_per_roi;
+
+    ATH_MSG_DEBUG(" |-- Trig::Feature Extraction (through getCombinations method)");
+    const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
+    const Trig::FeatureContainer fecont =chgrp->features();
+    const std::vector<Trig::Combination> combfeaturevect = fecont.getCombinations();
+    // Loop over the RoIs??
+    ATH_MSG_DEBUG("  |- Size of the Combination of features vector: " << combfeaturevect.size());  
+    ATH_MSG_DEBUG("  (Equivalent to the number of RoIs???)");
+    unsigned int iRoI = 0;
+    for( auto & combination : combfeaturevect)
+    {
+        // Get the Jets
+        std::vector<Trig::Feature<xAOD::JetContainer> > jetfeaturevect = combination.get<xAOD::JetContainer>();
+        if( jetfeaturevect.empty() )
+        {
+            ATH_MSG_DEBUG("    Not found xAOD::JetContainer available instance)");
+            return jet_tracks_per_roi_t(v,tv_per_roi);
+        }
+        ATH_MSG_DEBUG(" |-- Found " << jetfeaturevect.size() << " jet-collections (or equivalently RoIs)");
+        for(size_t i = 0; i < jetfeaturevect.size(); ++i)
+        {
+            const xAOD::JetContainer * jets = jetfeaturevect[i].cptr();
+            for(size_t k = 0; k < jets->size(); ++k)
+            {
+                v.push_back( (*jets)[k] );
+                ATH_MSG_DEBUG("    | pt:" << ((*jets)[k])->pt()/Gaudi::Units::GeV <<
+                        " eta:" << ((*jets)[k])->eta() << " phi:" << ((*jets)[k])->phi());
+            }
+        }
+        // Get the tracks
+        std::vector<Trig::Feature<xAOD::TrackParticleContainer> > trackfeaturevect = combination.get<xAOD::TrackParticleContainer>();
+        if( trackfeaturevect.empty() )
+        {
+            ATH_MSG_DEBUG("    Not found xAOD::TrackParticleContainer available instance)");
+            return jet_tracks_per_roi_t(v,tv_per_roi);
+        }
+        // Building the vector of tracks
+        ATH_MSG_DEBUG(" |-- Found " << trackfeaturevect.size() << " track-collections");
+        for(size_t i = 0; i < trackfeaturevect.size(); ++i)
+        {
+            // For the i-RoI, the associated tracks are 
+            const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
+            const size_t trackssize = tracks->size();
+            std::vector<const xAOD::TrackParticle*> tv;
+            ATH_MSG_DEBUG("   |-- Number of tracks for the " << iRoI << "-RoI: " << trackssize);
+            for(size_t k=0; k < trackssize; ++k)
+            {
+                tv.push_back( (*tracks)[k] );
+                ATH_MSG_DEBUG("    | pt:" << ((*tracks)[k])->pt()/Gaudi::Units::GeV <<
+                        " eta:" << ((*tracks)[k])->eta() << " phi:" << ((*tracks)[k])->phi());
+            }
+            tv_per_roi.push_back(tv);
+        }
+        ++iRoI;
+    }
+    return jet_tracks_per_roi_t(v,tv_per_roi);
+}
+
 // Overload to get all the track-based trigger chains
 std::vector<std::vector<const xAOD::TrackParticle*> > RPVMCTruthHists::getTrackParticles()
 {
@@ -532,7 +607,7 @@ std::vector<std::vector<const xAOD::TrackParticle*> > RPVMCTruthHists::getTrackP
         const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
         const size_t trackssize = tracks->size();
         std::vector<const xAOD::TrackParticle*> tv;
-        ATH_MSG_DEBUG("     |-- Number of tracks for the " << i << "-RoI: " << trackssize);
+        ATH_MSG_DEBUG("   |-- Number of tracks for the " << i << "-RoI: " << trackssize);
         for(size_t k=0; k < trackssize; ++k)
         {
             tv.push_back( (*tracks)[k] );

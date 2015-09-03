@@ -36,6 +36,9 @@ class McEventCollection;
   
   @author  Jordi Duarte-Campderros <jorge.duarte.campderros@cern.ch>
 */
+
+// Just to avoid writing so long...
+typedef std::pair<std::vector<const xAOD::Jet*>,std::vector<std::vector<const xAOD::TrackParticle*> > > jet_tracks_per_roi_t;
   
 class RPVMCTruthHists : public AthAlgorithm
 {
@@ -76,6 +79,10 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Get the track collection reconstructed in the RoI
         std::vector<std::vector<const xAOD::TrackParticle*> > getTrackParticles(); // Track-based trigger
         std::vector<std::vector<const xAOD::TrackParticle*> > getTrackParticles(const std::string & chgrpname);
+
+        //! Get the Jet (RoI-based) and the track collections
+        jet_tracks_per_roi_t getJetsAndTracks();
+        jet_tracks_per_roi_t getJetsAndTracks(const std::string & chgrpname);
 
         //! Get the list of particles with status 1 tracking-down the vertex (vtx)
         void getParticlesInDetector( const HepMC::GenVertex * vtx, std::vector<const HepMC::GenParticle *> & daugh );
