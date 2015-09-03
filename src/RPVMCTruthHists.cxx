@@ -64,9 +64,6 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_genpfromdv_vz(0),
     m_jetroipresent(0),
     m_jetroimatched(0),
-    m_jetroimatched_eta(0),
-    m_jetroimatched_phi(0),
-    m_jetroimatched_pt(0),
     m_jetroi_et(0),
     m_jetroi_eta(0),
     m_jetroi_phi(0),
@@ -136,10 +133,6 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_regFPointers.push_back(&m_genpfromdv_vy);
     m_regFPointers.push_back(&m_genpfromdv_vz);
     
-    m_regFPointers.push_back(&m_jetroimatched_eta);
-    m_regFPointers.push_back(&m_jetroimatched_phi);
-    m_regFPointers.push_back(&m_jetroimatched_pt);
-
     m_regFPointers.push_back(&m_jetroi_et);
     m_regFPointers.push_back(&m_jetroi_eta);
     m_regFPointers.push_back(&m_jetroi_phi);
@@ -201,9 +194,6 @@ StatusCode RPVMCTruthHists::initialize()
     m_tree->Branch("genpfromdv_vz",&m_genpfromdv_vz);
     m_tree->Branch("jetroimatched",&m_jetroimatched);
     m_tree->Branch("jetroipresent",&m_jetroipresent);
-    m_tree->Branch("jetroimatched_eta",&m_jetroimatched_eta);
-    m_tree->Branch("jetroimatched_phi",&m_jetroimatched_phi);
-    m_tree->Branch("jetroimatched_pt",&m_jetroimatched_pt);
 
     // RoI info (and tracks per Roi)
     m_tree->Branch("jetroi_et",&m_jetroi_et);
@@ -216,15 +206,16 @@ StatusCode RPVMCTruthHists::initialize()
     m_tree->Branch("ntracksd0lowercut",&m_ntracksd0lowercut);
     m_tree->Branch("sumpttracksd0lowercut",&m_sumpttracksd0lowercut);
 
+    // tracks hits per RoI
+    m_tree->Branch("jetroi_blayer",&m_track_blayer);
+    m_tree->Branch("jetroi_pixhits",&m_track_pixhits);
+    m_tree->Branch("jetroi_scthits",&m_track_scthits);
+    m_tree->Branch("jetroi_trthits",&m_track_trthits);
+    m_tree->Branch("jetroi_silhits",&m_track_silhits);
+    m_tree->Branch("jetroi_tothits",&m_track_tothits);
+    
     m_tree->Branch("tracktoroi_index",&m_tracktoroi_index);
 
-    // tracks hits
-    m_tree->Branch("track_blayer",&m_track_blayer);
-    m_tree->Branch("track_pixhits",&m_track_pixhits);
-    m_tree->Branch("track_scthits",&m_track_scthits);
-    m_tree->Branch("track_trthits",&m_track_trthits);
-    m_tree->Branch("track_silhits",&m_track_silhits);
-    m_tree->Branch("track_tothits",&m_track_tothits);
     // tracks:: parameters at perigee
     m_tree->Branch("track_d0",&m_track_d0);
     m_tree->Branch("track_z0",&m_track_z0);
@@ -365,6 +356,9 @@ StatusCode RPVMCTruthHists::execute()
         m_track_tothits->push_back(tothits_roi);
         // Update the next first index for the next RoI
         indexfirsttrack += tracks.size();
+
+        // matching information, just filling with the empty val
+        m_jetroimatched->push_back(-1);
     }
     
     //=============================================================
@@ -382,11 +376,12 @@ StatusCode RPVMCTruthHists::execute()
         ATH_MSG_ERROR("unable to retrieve MC coll");
         return StatusCode::FAILURE;
     }
+    
+    //=============================================================
+    // Get LSP particle (In-particle of the dv) for each vertex
+    // and also store some useful info
     std::vector<const HepMC::GenVertex *> dvertices = getDisplacedVertices(mcColl);
 
-    //=============================================================
-    // Get LSP particle (In particle of the dv) for each vertex
-    // and also store some useful info
     for(auto & vertex : dvertices)
     {
         const HepMC::GenParticle * _lsp =  *(vertex->particles_in_const_begin()); 
@@ -435,22 +430,16 @@ StatusCode RPVMCTruthHists::execute()
 
         // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
         // phi of the DV-particles
-        const xAOD::Jet * jetmatched = getJetRoIdRMatched(partindet_inside1mm,jets);
+        const int iJetMatched = getJetRoIdRMatched(partindet_inside1mm,jets);
         //const TrigRoiDescriptor * jetmatched = getRoIdRMatched(partindet_inside1mm,trgnamejets.second);
         //        trgnamejets.second);
-        int anyJetMatched=0;
-        if( jetmatched )
-        {
-            m_jetroimatched_eta->push_back(jetmatched->eta());
-            m_jetroimatched_phi->push_back(jetmatched->phi());
-            m_jetroimatched_pt->push_back(jetmatched->pt()/Gaudi::Units::GeV);
-            //m_jetroimatched_pt->push_back(jetmatched->zed()/Gaudi::Units::mm);
-            ++anyJetMatched;
-        }
         // Keep track if this vertex has associated a Jet-Roi
-        // The vector is filled (0--there's no match, 1--there's match) 
-        // in the DV order. 
-        m_jetroimatched->push_back(anyJetMatched);
+        // The vector was filled with -1 if there's no match or the index
+        // of the current LSP if there is a match
+        if( iJetMatched != -1 )
+        {
+            (*m_jetroimatched)[iJetMatched] = (m_eta->size()-1);
+        }
     }
 
     // Persistency and freeing memory
@@ -551,6 +540,8 @@ jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks(const std::string & chgrp
                         " eta:" << ((*jets)[k])->eta() << " phi:" << ((*jets)[k])->phi());
             }
         }
+        // Also I can get the RoIs
+        // See function getRoIs..
         // Get the tracks
         std::vector<Trig::Feature<xAOD::TrackParticleContainer> > trackfeaturevect = combination.get<xAOD::TrackParticleContainer>();
         if( trackfeaturevect.empty() )
@@ -620,10 +611,10 @@ std::vector<std::vector<const xAOD::TrackParticle*> > RPVMCTruthHists::getTrackP
     return tv_per_roi;
 }
 
-const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
-        const std::vector<const xAOD::Jet*> & jets)
+int RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
+        const std::vector<const xAOD::Jet*> & jets) const
 {
-    ATH_MSG_DEBUG("Using a jet(roi-equivalent collection of " << jets.size() 
+    ATH_MSG_VERBOSE("Using a jet (roi-equivalent) collection of " << jets.size() 
             << " elements trying to be matched with a collection of status-1" 
             << " gen particles from the DV.");
     for(auto & p : particles)
@@ -638,28 +629,29 @@ const xAOD::Jet * RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const He
         {
             continue;
         }
-        ATH_MSG_DEBUG("Particle (pdgID=" << p->pdg_id() << ") Eta: " << p->momentum().eta()
+        ATH_MSG_VERBOSE(" - Gen. particle (pdgID=" << p->pdg_id() << ") Eta: " << p->momentum().eta()
 			<< " and Phi: " << p->momentum().phi());
         // Correcting Eta and Phi, in order to be trans
-        for(auto & jet : jets)
+        for(unsigned int k = 0; k < jets.size(); ++k)
         {
-            if(jet == 0)
+            if(jets[k] == 0)
             {
                 continue;
             }
             // Converting to I4Momentum class in order to use the helper function deltaR
             // Assuming that the DV position is negligible with respect the point where 
             // the jets were built
-            P4EEtaPhiM jetP4(jet->e(),jet->eta(),jet->phi(),jet->m());
+            P4EEtaPhiM jetP4((jets[k])->e(),(jets[k])->eta(),(jets[k])->phi(),(jets[k])->m());
             P4EEtaPhiM genP4(p->momentum().e(),p->momentum().eta(),p->momentum().phi(),p->momentum().m());
             if( P4Helpers::isInDeltaR(jetP4,genP4,0.2) )
             {
-                return jet;
+                ATH_MSG_VERBOSE("  --> jet matched!");
+                return k;
             }
         }
     }
     ATH_MSG_DEBUG("Not found any matched jet");
-    return 0;
+    return -1;
 }
 
 // Overload to the track-based triggers
@@ -668,6 +660,7 @@ std::vector<const TrigRoiDescriptor*> RPVMCTruthHists::getTriggerRoIs()
     return this->getTriggerRoIs(TRACK_BASED_TRGS);
 }
 
+// FIXME: TO BE DEPRECATED
 std::vector<const TrigRoiDescriptor*> RPVMCTruthHists::getTriggerRoIs(const std::string & chgrpname)
 {
     std::vector<const TrigRoiDescriptor*> v;
@@ -685,20 +678,16 @@ std::vector<const TrigRoiDescriptor*> RPVMCTruthHists::getTriggerRoIs(const std:
     {
         const TrigRoiDescriptor * roijet = roifeaturevect[i].cptr();
         v.push_back( roijet );
-        // Filling up the jet-roi related --> TO BE CODED in the hltExecute
-        //m_jetroi_et[chgrpname]->push_back(-999); // FIXME: How to extract this info from a RoI?
-        //m_jetroi_eta[chgrpname]->push_back(roijet->eta());
-        //m_jetroi_phi[chgrpname]->push_back(roijet->phi());
         ATH_MSG_DEBUG("    | z:" << roijet->zed()/Gaudi::Units::mm <<
                     " eta:" << roijet->eta() << " phi:" << roijet->phi());
     }
     return v;
 }
 
-const TrigRoiDescriptor * RPVMCTruthHists::getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
-        const std::vector<const TrigRoiDescriptor*> & rois)
+int RPVMCTruthHists::getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
+        const std::vector<const TrigRoiDescriptor*> & rois) const
 {
-    ATH_MSG_DEBUG("Using a RoI collection of " << rois.size() 
+    ATH_MSG_VERBOSE("Using a RoI collection of " << rois.size() 
             << " elements trying to be matched with a collection of status-1" 
             << " gen particles from the DV.");
     for(auto & p : particles)
@@ -713,32 +702,33 @@ const TrigRoiDescriptor * RPVMCTruthHists::getRoIdRMatched(const std::vector<con
         {
             continue;
         }
-        ATH_MSG_DEBUG("Particle (pdgID=" << p->pdg_id() << ") Eta: " << p->momentum().eta()
+        ATH_MSG_VERBOSE(" - Gen. particle (pdgID=" << p->pdg_id() << ") Eta: " << p->momentum().eta()
 			<< " and Phi: " << p->momentum().phi());
         // Correcting Eta and Phi, in order to be trans
-        for(auto & roi : rois)
+        for(unsigned int k = 0; k < rois.size(); ++k)
         {
-            if(roi == 0)
+            if(rois[k] == 0)
             {
                 continue;
             }
             // Assuming that the DV position is negligible with respect the point where 
             // the jets were built
-            if( p->momentum().eta() < roi->etaMinus() || 
-                    p->momentum().eta() > roi->etaPlus() )
+            if( p->momentum().eta() < (rois[k])->etaMinus() || 
+                    p->momentum().eta() > (rois[k])->etaPlus() )
             {
                 continue;
             }
-            if( p->momentum().phi() < roi->phiMinus() && 
-                    p->momentum().phi() > roi->phiPlus() )
+            if( p->momentum().phi() < (rois[k])->phiMinus() && 
+                    p->momentum().phi() > (rois[k])->phiPlus() )
             {
                 continue;
             }
-            return roi;
+            ATH_MSG_VERBOSE("  --> jet matched!");
+            return k;
         }
     }
     ATH_MSG_DEBUG("Not found any matched roi");
-    return 0;
+    return -1;
 }
 
 std::vector<const HepMC::GenVertex *> RPVMCTruthHists::getDisplacedVertices(const McEventCollection * const mcColl)

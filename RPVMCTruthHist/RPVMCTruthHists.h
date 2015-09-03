@@ -60,23 +60,25 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Get trigger decision
         bool getTriggerResult(const std::string & chgrname);
 
-        //! Getting the RoI (jet) collection to match with MC
+        //! Getting the RoI (jet) collection to match with MC-- > TO BE DEPRECATED, see 
+        //! getJetsAndTracks
         std::vector<const xAOD::Jet *> getTriggerJets(); // track-based triggers
         std::vector<const xAOD::Jet *> getTriggerJets(const std::string & chgrname); 
         std::vector<const TrigRoiDescriptor *> getTriggerRoIs();  // track-based triggers
         std::vector<const TrigRoiDescriptor *> getTriggerRoIs(const std::string & chgrname); 
 
-        //! Get the Jet (RoI-based) which matches in a dR any of the genp particles
-        const xAOD::Jet * getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
-                const std::vector<const xAOD::Jet*> & jets);
+        //! Get the index of the Jet (RoI-based) which matches in a dR any of the genp particles
+        int getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
+                const std::vector<const xAOD::Jet*> & jets) const;
 
-        //! Get the RoI (Jet-based) which matches in a dR any of the genpparticles
-        const TrigRoiDescriptor * getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
-                const std::vector<const TrigRoiDescriptor*> & rois);
+        //! Get the index of the RoI (Jet-based) which matches in a dR any of the genpparticles
+        int getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
+                const std::vector<const TrigRoiDescriptor*> & rois) const;
         //! Get the displaced-vertex in the event
         std::vector<const HepMC::GenVertex *> getDisplacedVertices(const McEventCollection * const mcColl);
 
-        //! Get the track collection reconstructed in the RoI
+        //! Get the track collection reconstructed in the RoI --> TO BE DEPRECATED, see 
+        //! getJetsAndTracks
         std::vector<std::vector<const xAOD::TrackParticle*> > getTrackParticles(); // Track-based trigger
         std::vector<std::vector<const xAOD::TrackParticle*> > getTrackParticles(const std::string & chgrpname);
 
@@ -140,12 +142,8 @@ class RPVMCTruthHists : public AthAlgorithm
 
         //! Keeping track if the a jet-roi was matched with a DV-particles
         std::vector<int> * m_jetroipresent;
+        //! Index of the roi related variables with matches with the i-LSP
         std::vector<int> * m_jetroimatched;
-        //! Kinematics of the jet roi associated to a gen-particles from DV
-        //! FIXME: REDUNDANT FROM RoI info (See below)
-        std::vector<float> * m_jetroimatched_eta;
-        std::vector<float> * m_jetroimatched_phi;
-        std::vector<float> * m_jetroimatched_pt;
 
         //! Trigger RoI (or Jet-RoI) information
         std::vector<float> * m_jetroi_et;
