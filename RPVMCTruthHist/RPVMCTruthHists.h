@@ -60,12 +60,15 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Get trigger decision
         bool getTriggerResult(const std::string & chgrname);
 
-        //! Getting the RoI (jet) collection to match with MC-- > TO BE DEPRECATED, see 
-        //! getJetsAndTracks
-        std::vector<const xAOD::Jet *> getTriggerJets(); // track-based triggers
-        std::vector<const xAOD::Jet *> getTriggerJets(const std::string & chgrname); 
-        std::vector<const TrigRoiDescriptor *> getTriggerRoIs();  // track-based triggers
-        std::vector<const TrigRoiDescriptor *> getTriggerRoIs(const std::string & chgrname); 
+        //! Method to obtain the trigger collections (jets, RoIDescriptors and Tracks)
+        //! associated to each RoI
+        //! Update the Jet collection with the Jet reconstructed in the RoI
+        void updateTriggerJets(const Trig::Combination & comb,std::vector<const xAOD::Jet*> & v); 
+        //! Update the Roi-descriptor collections with the RoI info
+        void updateTriggerRoIs(const Trig::Combination & comb,std::vector<const TrigRoiDescriptor *> & roides); 
+        //! Update the track collection reconstructed in the RoI 
+        void updateTrackParticles(const Trig::Combination & comb,
+                std::vector<std::vector<const xAOD::TrackParticle*> > & tracks_vector);
 
         //! Get the index of the Jet (RoI-based) which matches in a dR any of the genp particles
         int getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
@@ -76,11 +79,6 @@ class RPVMCTruthHists : public AthAlgorithm
                 const std::vector<const TrigRoiDescriptor*> & rois) const;
         //! Get the displaced-vertex in the event
         std::vector<const HepMC::GenVertex *> getDisplacedVertices(const McEventCollection * const mcColl);
-
-        //! Get the track collection reconstructed in the RoI --> TO BE DEPRECATED, see 
-        //! getJetsAndTracks
-        std::vector<std::vector<const xAOD::TrackParticle*> > getTrackParticles(); // Track-based trigger
-        std::vector<std::vector<const xAOD::TrackParticle*> > getTrackParticles(const std::string & chgrpname);
 
         //! Get the Jet (RoI-based) and the track collections
         jet_tracks_per_roi_t getJetsAndTracks();

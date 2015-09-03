@@ -307,12 +307,12 @@ StatusCode RPVMCTruthHists::execute()
             if( track->d0() < 1.0*Gaudi::Units::mm )
             {
                 ++ntracksd0low;
-                sumptd0low += track->pt();
+                sumptd0low += (track->pt()*Gaudi::Units::Mev/Gaudi::Units::GeV);
             }
             else
             {
                 ++ntracksd0high;
-                sumptd0high += track->pt();
+                sumptd0high += (track->pt()*Gaudi::Units::Mev/Gaudi::Units::GeV);
             }
             uint8_t nblayer = 0;
             track->summaryValue(nblayer, xAOD::numberOfBLayerHits);
@@ -336,7 +336,7 @@ StatusCode RPVMCTruthHists::execute()
             // Track parameters at the perigee
             m_track_d0->push_back(track->d0());
             m_track_z0->push_back(track->z0());
-            m_track_pt->push_back(track->pt());
+            m_track_pt->push_back(track->pt()*Gaudi::Units::MeV/Gaudi::Units::GeV);
             m_track_eta->push_back(track->eta());
             m_track_phi->push_back(track->phi());
         }
@@ -357,7 +357,8 @@ StatusCode RPVMCTruthHists::execute()
         // Update the next first index for the next RoI
         indexfirsttrack += tracks.size();
 
-        // matching information, just filling with the empty val
+        // matching information, just filling with the empty val, to be
+        // updated in the gen-particles loop
         m_jetroimatched->push_back(-1);
     }
     
@@ -450,7 +451,6 @@ StatusCode RPVMCTruthHists::execute()
 }
 
 
-
 StatusCode RPVMCTruthHists::finalize() 
 {
     ATH_MSG_DEBUG( "in RPVMCTruthHists::finalize()");
@@ -467,39 +467,75 @@ bool RPVMCTruthHists::getTriggerResult(const std::string & trgname)
     return isPass;//*m_prescales[trgname];
 }
 
-// Overload to get all the track-based trigger chains
-std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets()
+void RPVMCTruthHists::updateTriggerJets(const Trig::Combination & combination,std::vector<const xAOD::Jet*> & v)
 {
-    return this->getTriggerJets(TRACK_BASED_TRGS);
-}
-
-std::vector<const xAOD::Jet*> RPVMCTruthHists::getTriggerJets(const std::string & chgrpname)
-{
-    std::vector<const xAOD::Jet*> v;
-
-    ATH_MSG_DEBUG(" |-- Trig::Feature<xAOD::JetContainer> ");
-    const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
-    const Trig::FeatureContainer fecont =chgrp->features();
-    std::vector<Trig::Feature<xAOD::JetContainer> > jetfeaturevect = fecont.get<xAOD::JetContainer>();
+    std::vector<Trig::Feature<xAOD::JetContainer> > jetfeaturevect = combination.get<xAOD::JetContainer>();
     if( jetfeaturevect.empty() )
     {
-        ATH_MSG_DEBUG("    Not found xAOD::JetContainer available instance)");
-        return v;
+        ATH_MSG_DEBUG("Not found xAOD::JetContainer available instance");
+        return;
     }
-    
-    ATH_MSG_DEBUG(" |-- Found " << jetfeaturevect.size() << " jet-collections (or equivalently RoIs)");
+
+    ATH_MSG_DEBUG("   * " << jetfeaturevect.size() << " jet-collections");
     for(size_t i = 0; i < jetfeaturevect.size(); ++i)
     {
         const xAOD::JetContainer * jets = jetfeaturevect[i].cptr();
         for(size_t k = 0; k < jets->size(); ++k)
         {
             v.push_back( (*jets)[k] );
-            ATH_MSG_DEBUG("    | pt:" << ((*jets)[k])->pt()/Gaudi::Units::GeV <<
+            ATH_MSG_VERBOSE("      pt:" << ((*jets)[k])->pt()/Gaudi::Units::GeV <<
                     " eta:" << ((*jets)[k])->eta() << " phi:" << ((*jets)[k])->phi());
         }
     }
-    return v;
 }
+
+void RPVMCTruthHists::updateTriggerRoIs(const Trig::Combination & combination,std::vector<const TrigRoiDescriptor*> & roi_vec)
+{
+    std::vector<Trig::Feature<TrigRoiDescriptor> > roifeaturevect = combination.get<TrigRoiDescriptor>();
+    if( roifeaturevect.empty() )
+    {
+        ATH_MSG_DEBUG("Not found TrigRoiDescriptor available instance");
+        return;
+    }
+    
+    ATH_MSG_DEBUG("   * " << roifeaturevect.size() << " RoIDescriptor-collections");
+    for(size_t i = 0; i < roifeaturevect.size(); ++i)
+    {
+        const TrigRoiDescriptor * roijet = roifeaturevect[i].cptr();
+        roi_vec.push_back( roijet );
+        ATH_MSG_VERBOSE("      z: " << roijet->zed()/Gaudi::Units::mm <<
+                    " eta:" << roijet->eta() << " phi:" << roijet->phi());
+    }
+}
+
+void RPVMCTruthHists::updateTrackParticles(const Trig::Combination & combination, 
+        std::vector<std::vector<const xAOD::TrackParticle*> > & trackcollection_vector)
+{
+    std::vector<Trig::Feature<xAOD::TrackParticleContainer> > trackfeaturevect = combination.get<xAOD::TrackParticleContainer>();
+    if( trackfeaturevect.empty() )
+    {
+        ATH_MSG_DEBUG("Not found xAOD::TrackParticleContainer available instance)");
+        return;
+    }
+    // Building the vector of tracks
+    ATH_MSG_DEBUG("   * " << trackfeaturevect.size() << " track-collections");
+    for(size_t i = 0; i < trackfeaturevect.size(); ++i)
+    {
+        // For the i-RoI, the associated tracks are 
+        const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
+        const size_t trackssize = tracks->size();
+        std::vector<const xAOD::TrackParticle*> tv;
+        ATH_MSG_DEBUG("    with "<< trackssize << " tracks");
+        for(size_t k=0; k < trackssize; ++k)
+        {
+            tv.push_back( (*tracks)[k] );
+            ATH_MSG_VERBOSE("        pt:" << ((*tracks)[k])->pt()/Gaudi::Units::GeV <<
+                    " eta:" << ((*tracks)[k])->eta() << " phi:" << ((*tracks)[k])->phi());
+        }
+        trackcollection_vector.push_back(tv);
+    }
+}
+
 
 jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks()
 {
@@ -508,7 +544,10 @@ jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks()
 
 jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks(const std::string & chgrpname=TRACK_BASED_TRGS)
 {
-    std::vector<const xAOD::Jet*> v;
+    // The elements to be retrieved from each RoI. The vector 
+    // index corresponds to the RoI index
+    std::vector<const xAOD::Jet*> jets_per_roi;
+    //std::vector<const TrigRoiDescriptor*> roidescr_per_roi;
     std::vector<std::vector<const xAOD::TrackParticle*> > tv_per_roi;
 
     ATH_MSG_DEBUG("|-- Trig::Feature Extraction (through getCombinations method)");
@@ -523,93 +562,16 @@ jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks(const std::string & chgrp
     {
         ATH_MSG_DEBUG("  |- Found at RoI #" << iRoI);
         // Get the Jets
-        std::vector<Trig::Feature<xAOD::JetContainer> > jetfeaturevect = combination.get<xAOD::JetContainer>();
-        if( jetfeaturevect.empty() )
-        {
-            ATH_MSG_DEBUG("Not found xAOD::JetContainer available instance)");
-            return jet_tracks_per_roi_t(v,tv_per_roi);
-        }
-        ATH_MSG_DEBUG("   * " << jetfeaturevect.size() << " jet-collections");
-        for(size_t i = 0; i < jetfeaturevect.size(); ++i)
-        {
-            const xAOD::JetContainer * jets = jetfeaturevect[i].cptr();
-            for(size_t k = 0; k < jets->size(); ++k)
-            {
-                v.push_back( (*jets)[k] );
-                ATH_MSG_VERBOSE("      pt:" << ((*jets)[k])->pt()/Gaudi::Units::GeV <<
-                        " eta:" << ((*jets)[k])->eta() << " phi:" << ((*jets)[k])->phi());
-            }
-        }
-        // Also I can get the RoIs
-        // See function getRoIs..
+        updateTriggerJets(combination,jets_per_roi);
+        // Get the RoIDescriptors
+        //updateTriggerRoIs(combination,roidescr_per_roi);
         // Get the tracks
-        std::vector<Trig::Feature<xAOD::TrackParticleContainer> > trackfeaturevect = combination.get<xAOD::TrackParticleContainer>();
-        if( trackfeaturevect.empty() )
-        {
-            ATH_MSG_DEBUG("Not found xAOD::TrackParticleContainer available instance)");
-            return jet_tracks_per_roi_t(v,tv_per_roi);
-        }
-        // Building the vector of tracks
-        ATH_MSG_DEBUG("   * " << trackfeaturevect.size() << " track-collections");
-        for(size_t i = 0; i < trackfeaturevect.size(); ++i)
-        {
-            // For the i-RoI, the associated tracks are 
-            const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
-            const size_t trackssize = tracks->size();
-            std::vector<const xAOD::TrackParticle*> tv;
-            ATH_MSG_DEBUG("    with "<< trackssize << " tracks");
-            for(size_t k=0; k < trackssize; ++k)
-            {
-                tv.push_back( (*tracks)[k] );
-                ATH_MSG_VERBOSE("        pt:" << ((*tracks)[k])->pt()/Gaudi::Units::GeV <<
-                        " eta:" << ((*tracks)[k])->eta() << " phi:" << ((*tracks)[k])->phi());
-            }
-            tv_per_roi.push_back(tv);
-        }
+        updateTrackParticles(combination,tv_per_roi);
         ++iRoI;
     }
-    return jet_tracks_per_roi_t(v,tv_per_roi);
+    return jet_tracks_per_roi_t(jets_per_roi,tv_per_roi);
 }
 
-// Overload to get all the track-based trigger chains
-std::vector<std::vector<const xAOD::TrackParticle*> > RPVMCTruthHists::getTrackParticles()
-{
-    return this->getTrackParticles(TRACK_BASED_TRGS);
-}
-
-std::vector<std::vector<const xAOD::TrackParticle*> > RPVMCTruthHists::getTrackParticles(const std::string & chgrpname)
-{
-    std::vector<std::vector<const xAOD::TrackParticle*> > tv_per_roi;
-
-    ATH_MSG_DEBUG(" |-- Trig::Feature<xAOD::TrigParticleContainer> ");
-    const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
-    const Trig::FeatureContainer fecont =chgrp->features();
-    std::vector<Trig::Feature<xAOD::TrackParticleContainer> > trackfeaturevect = fecont.get<xAOD::TrackParticleContainer>();
-    if( trackfeaturevect.empty() )
-    {
-        ATH_MSG_DEBUG("    Not found xAOD::TrackParticleContainer available instance)");
-        return tv_per_roi;
-    }
-    
-    // Building the vector of tracks
-    ATH_MSG_DEBUG(" |-- Found " << trackfeaturevect.size() << " track-collections");
-    for(size_t i = 0; i < trackfeaturevect.size(); ++i)
-    {
-        // For the i-RoI, the associated tracks are 
-        const xAOD::TrackParticleContainer * tracks = trackfeaturevect[i].cptr();
-        const size_t trackssize = tracks->size();
-        std::vector<const xAOD::TrackParticle*> tv;
-        ATH_MSG_DEBUG("   |-- Number of tracks for the " << i << "-RoI: " << trackssize);
-        for(size_t k=0; k < trackssize; ++k)
-        {
-            tv.push_back( (*tracks)[k] );
-            ATH_MSG_DEBUG("    | pt:" << ((*tracks)[k])->pt()/Gaudi::Units::GeV <<
-                    " eta:" << ((*tracks)[k])->eta() << " phi:" << ((*tracks)[k])->phi());
-        }
-        tv_per_roi.push_back(tv);
-    }
-    return tv_per_roi;
-}
 
 int RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
         const std::vector<const xAOD::Jet*> & jets) const
@@ -652,36 +614,6 @@ int RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const HepMC::GenPartic
     }
     ATH_MSG_DEBUG("Not found any matched jet");
     return -1;
-}
-
-// Overload to the track-based triggers
-std::vector<const TrigRoiDescriptor*> RPVMCTruthHists::getTriggerRoIs()
-{
-    return this->getTriggerRoIs(TRACK_BASED_TRGS);
-}
-
-// FIXME: TO BE DEPRECATED
-std::vector<const TrigRoiDescriptor*> RPVMCTruthHists::getTriggerRoIs(const std::string & chgrpname)
-{
-    std::vector<const TrigRoiDescriptor*> v;
-
-    ATH_MSG_DEBUG(" |-- Trig::Feature<TrigRoiDescriptor> ");
-    const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
-    const Trig::FeatureContainer fecont =chgrp->features();
-    std::vector<Trig::Feature<TrigRoiDescriptor> > roifeaturevect = fecont.get<TrigRoiDescriptor>();
-    if( roifeaturevect.empty() )
-    {
-        ATH_MSG_DEBUG("    Not found TrigRoiDescriptor available instance)");
-        return v;
-    }
-    for(size_t i = 0; i < roifeaturevect.size(); ++i)
-    {
-        const TrigRoiDescriptor * roijet = roifeaturevect[i].cptr();
-        v.push_back( roijet );
-        ATH_MSG_DEBUG("    | z:" << roijet->zed()/Gaudi::Units::mm <<
-                    " eta:" << roijet->eta() << " phi:" << roijet->phi());
-    }
-    return v;
 }
 
 int RPVMCTruthHists::getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
