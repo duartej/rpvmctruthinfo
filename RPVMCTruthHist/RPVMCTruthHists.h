@@ -27,6 +27,12 @@ namespace HepMC
     class GenParticle;
     class GenVertex;
 }
+
+namespace HepPDT
+{
+    class ParticleDataTable; 
+}
+
 class McEventCollection;
 
 /* @class RPVMCTruth
@@ -100,11 +106,11 @@ class RPVMCTruthHists : public AthAlgorithm
         void allocTreeVars();
         void deallocTreeVars();
 		
-	  	//  ServiceHandle<ITHistSvc> m_tHistSvc;
 		int m_LLP_PDGID;
         std::string m_mcCollName;
         std::string m_streamName;
         ServiceHandle<ITHistSvc> m_tHistSvc;
+        const HepPDT::ParticleDataTable * m_pdt;
         //! LSP decay vertex
         std::vector<float> * m_dvX;
         std::vector<float> * m_dvY;
@@ -119,8 +125,10 @@ class RPVMCTruthHists : public AthAlgorithm
         std::vector<float> * m_betagamma;
         // Extra info:
         //! Number of particles (in the detector) coming from a LSP 
+        std::vector<int> *   m_nDecayed;
+        //! Number of Charged particles (in the detector) coming from a LSP 
         std::vector<int> *   m_nTrk;
-        //! Number of particles (in the detector) associated to a
+        //! Number of charged particles (in the detector) associated to a
         //! DV (i.e. tracks start at least within 4 mm from the DV)
         std::vector<int> *   m_nTrk1mm;
         //! Some kinematics of those particles (note that 

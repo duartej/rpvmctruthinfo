@@ -5,15 +5,17 @@
 #include "RPVMCTruthHist/RPVMCTruthHists.h"
 
 #include "GaudiKernel/SystemOfUnits.h"
-//#include "GaudiKernel/ITHistSvc.h"
+#include "GaudiKernel/IPartPropSvc.h"
+
 #include "HepMC/GenEvent.h"
 #include "HepMC/GenVertex.h"
 #include "GeneratorObjects/McEventCollection.h"
 
+#include "McParticleUtils/McUtils.h" // for chargeFromPdgId
+//#include "HepPDT/ParticleData.hh"
+
 #include "TrigDecisionTool/FeatureContainer.h"
 #include "TrigDecisionTool/Feature.h"
-
-//#include "Particle/TrackParticleContainer.h"
 
 #include "xAODJet/Jet.h"
 #include "xAODJet/JetContainer.h"
@@ -44,6 +46,7 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
 		ISvcLocator* pSvcLocator) :
 	AthAlgorithm(name, pSvcLocator),
   	m_tHistSvc("THistSvc",name),
+    m_pdt(0),
     m_dvX(0),
     m_dvY(0),
     m_dvZ(0),
@@ -53,6 +56,7 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_eta(0),
     m_phi(0),
     m_betagamma(0),
+    m_nDecayed(0),
     m_nTrk(0),
     m_nTrk1mm(0),
     m_genpfromdv_pdgId(0),
@@ -90,13 +94,14 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
   	declareProperty("LLP_PDGID", m_LLP_PDGID=1000022);
   	declareProperty("MCCollection", m_mcCollName="GEN_EVENT");
   	declareProperty("OutputStreamName", m_streamName="StreamBoostEta");
-    
+
     std::vector<std::string> _k;
     _k.push_back("HLT_.*");
     declareProperty("TriggerChains", m_triggergroups=_k);
 
     // Register all the pointers related with the ttree variables
     // Integer vectors
+    m_regIPointers.push_back(&m_nDecayed);
     m_regIPointers.push_back(&m_nTrk);
     m_regIPointers.push_back(&m_nTrk1mm);
     m_regIPointers.push_back(&m_genpfromdv_pdgId);
@@ -160,7 +165,23 @@ StatusCode RPVMCTruthHists::initialize()
   		ATH_MSG_ERROR( "Unable to retrieve pointer to THistSvc" );
   		return sc;
     }
-  
+ 
+    // Get the Particle Properties Service
+    ServiceHandle<IPartPropSvc> partPropSvc("PartPropSvc", this->name());
+    if ( !partPropSvc.retrieve().isSuccess() ) 
+    {
+        ATH_MSG_ERROR(" Could not initialize Particle Properties Service");
+        return StatusCode::FAILURE;
+    }      
+ 
+    m_pdt = partPropSvc->PDT();
+    if ( 0 == m_pdt ) 
+    {
+        ATH_MSG_ERROR("Could not retrieve HepPDT::ParticleDataTable from "\
+                "ParticleProperties Service !!");
+        return StatusCode::FAILURE;
+    }
+ 
     // Initilization and registration of the tree
     m_tree = new TTree("RPVMCInfoTree","Displaced vertex MC-Info" );
     sc = m_tHistSvc->regTree("/"+m_streamName+"/RPVMCInfo",m_tree);
@@ -182,6 +203,7 @@ StatusCode RPVMCTruthHists::initialize()
     m_tree->Branch("phi",&m_phi);
     m_tree->Branch("betagamma",&m_betagamma);
     // Extra info
+    m_tree->Branch("nDecayed",&m_nDecayed);
     m_tree->Branch("nTrk",&m_nTrk);
     m_tree->Branch("nTrk1mm",&m_nTrk1mm);
     // Kinematics of gen-particles undecayed from the DV < 1mm
@@ -404,21 +426,31 @@ StatusCode RPVMCTruthHists::execute()
         // Searching for out-particles which actually leaves an imprint in the detector 
         std::vector<const HepMC::GenParticle*> partindet;
         getParticlesInDetector(vertex,partindet);
-        m_nTrk->push_back(partindet.size());
+        m_nDecayed->push_back(partindet.size());
+        // Just charged particles (potential tracks)
+        std::vector<const HepMC::GenParticle*> chargedpartindet;
+        for(auto & genparticle: partindet)
+        {
+            if( McUtils::chargeFromPdgId((genparticle->pdg_id()),m_pdt) != 0 )
+            {
+                chargedpartindet.push_back(genparticle);
+            }
+        }
+        m_nTrk->push_back(chargedpartindet.size());
         ATH_MSG_DEBUG("Number of out-particles: " << vertex->particles_out_size() );
         ATH_MSG_DEBUG("Number of out-particles (status=1): " << partindet.size());
         // --- Inside 1mm around the vertex
-        std::vector<const HepMC::GenParticle*> partindet_inside1mm;
-        for(auto & dp: partindet)
+        std::vector<const HepMC::GenParticle*> charged_partindet_inside1mm;
+        for(auto & dp: chargedpartindet)
         {
             if(isDecayedAround(dp,vertex))
             {
-                partindet_inside1mm.push_back(dp);
+                charged_partindet_inside1mm.push_back(dp);
             }
         }
-        m_nTrk1mm->push_back(partindet_inside1mm.size());
+        m_nTrk1mm->push_back(charged_partindet_inside1mm.size());
         // store some info from this particles
-        storeGenParticlesInfo(partindet_inside1mm);
+        storeGenParticlesInfo(charged_partindet_inside1mm);
         
         if(jets.size() == 0)
         {
@@ -429,7 +461,7 @@ StatusCode RPVMCTruthHists::execute()
 
         // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
         // phi of the DV-particles
-        const int iJetMatched = getJetRoIdRMatched(partindet_inside1mm,jets);
+        const int iJetMatched = getJetRoIdRMatched(charged_partindet_inside1mm,jets);
         //const TrigRoiDescriptor * jetmatched = getRoIdRMatched(partindet_inside1mm,trgnamejets.second);
         //        trgnamejets.second);
         // Keep track if this vertex has associated a Jet-Roi
@@ -757,7 +789,6 @@ void RPVMCTruthHists::getParticlesInDetector(const HepMC::GenVertex * vtx, std::
 
     return;
 }
-
 
 bool RPVMCTruthHists::isDecayedAround(const HepMC::GenParticle * p, const HepMC::GenVertex * vtx, const float & d)
 {
