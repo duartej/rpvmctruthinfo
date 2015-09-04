@@ -71,6 +71,8 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_jetroi_et(0),
     m_jetroi_eta(0),
     m_jetroi_phi(0),
+    m_jetroi_etahalfwidth(0),
+    m_jetroi_phihalfwidth(0),
     m_ntracks(0),
     m_ntracksd0uppercut(0),
     m_ntracksd0lowercut(0),
@@ -141,6 +143,8 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_regFPointers.push_back(&m_jetroi_et);
     m_regFPointers.push_back(&m_jetroi_eta);
     m_regFPointers.push_back(&m_jetroi_phi);
+    m_regFPointers.push_back(&m_jetroi_etahalfwidth);
+    m_regFPointers.push_back(&m_jetroi_phihalfwidth);
 
     m_regFPointers.push_back(&m_sumpttracksd0uppercut);
     m_regFPointers.push_back(&m_sumpttracksd0lowercut);
@@ -221,6 +225,8 @@ StatusCode RPVMCTruthHists::initialize()
     m_tree->Branch("jetroi_et",&m_jetroi_et);
     m_tree->Branch("jetroi_eta",&m_jetroi_eta);
     m_tree->Branch("jetroi_phi",&m_jetroi_phi);
+    m_tree->Branch("jetroi_eta_halfWidth",&m_jetroi_etahalfwidth);
+    m_tree->Branch("jetroi_phi_halfWidth",&m_jetroi_phihalfwidth);
 
     m_tree->Branch("ntracks",&m_ntracks);
     m_tree->Branch("ntracksd0uppercut",&m_ntracksd0uppercut);
@@ -287,24 +293,42 @@ StatusCode RPVMCTruthHists::execute()
     }
 
     // Retrieve the Roi/Jets related with the track-based triggers
-    jet_tracks_per_roi_t jets_and_tracks = getJetsAndTracks();
-    const std::vector<const xAOD::Jet *> jets = jets_and_tracks.first;
+    //jet_tracks_per_roi_t jets_and_tracks = getJetsAndTracks();
+    jetroi_tracks_per_roi_t jetrois_and_tracks = getJetRoIsAndTracks();
+    const std::vector<const xAOD::Jet *> jets  = jetrois_and_tracks.first.first;
+    std::vector<const TrigRoiDescriptor*> rois = jetrois_and_tracks.first.second;
     
     // Allocate Tree-variables
     allocTreeVars();
     
     //============================================================
     // RoI-related info 
+    // -- Be sure the number of RoIs and Jets is the same
+    if( jets.size() != rois.size() )
+    {
+        ATH_MSG_ERROR("Inconsistent number of RoIDescriptors and Jets!");
+        return StatusCode::FAILURE;
+    }
     
     // Filling up the jet-roi related tree variables
-    for(auto & jet: jets)
+    for(unsigned int k = 0; k < jets.size() ; ++k)
     {
-        m_jetroi_et->push_back(jet->pt()/Gaudi::Units::GeV);
-        m_jetroi_eta->push_back(jet->eta());
-        m_jetroi_phi->push_back(jet->phi());
+        m_jetroi_et->push_back( (jets[k])->pt()/Gaudi::Units::GeV);
+        m_jetroi_eta->push_back((jets[k])->eta());
+        m_jetroi_phi->push_back((jets[k])->phi());
+        m_jetroi_etahalfwidth->push_back( (rois[k])->etaPlus()-(rois[k])->eta() );
+        // Checking the -pi to pi range
+        if( (rois[k])->phiPlus() < (rois[k])->phi() )
+        {
+            m_jetroi_phihalfwidth->push_back( (rois[k])->phi()-(rois[k])->phiMinus() );
+        }
+        else
+        {
+            m_jetroi_phihalfwidth->push_back( (rois[k])->phiPlus()-(rois[k])->phi() );
+        }
     }
     // Trigger info:: Tracks of the track-based triggers
-    const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = jets_and_tracks.second;
+    const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = jetrois_and_tracks.second;
     int indexfirsttrack = 0;
     for(auto & tracks: tracks_per_roi)
     {
@@ -462,13 +486,14 @@ StatusCode RPVMCTruthHists::execute()
         // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
         // phi of the DV-particles
         const int iJetMatched = getJetRoIdRMatched(charged_partindet_inside1mm,jets);
-        //const TrigRoiDescriptor * jetmatched = getRoIdRMatched(partindet_inside1mm,trgnamejets.second);
-        //        trgnamejets.second);
+        // --> const std::vector<int> iRoIsMatched = getRoIdRMatched(partindet_inside1mm,rois);
         // Keep track if this vertex has associated a Jet-Roi
         // The vector was filled with -1 if there's no match or the index
         // of the current LSP if there is a match
-        if( iJetMatched != -1 )
+        //for(auto & iJetIndex: iRoIsMatched)
+        if(iJetMatched != -1)
         {
+            //(*m_jetroimatched)[iRoIsMatched] = (m_eta->size()-1);
             (*m_jetroimatched)[iJetMatched] = (m_eta->size()-1);
         }
     }
@@ -564,6 +589,41 @@ void RPVMCTruthHists::updateTrackParticles(const Trig::Combination & combination
         }
         trackcollection_vector.push_back(tv);
     }
+}
+
+jetroi_tracks_per_roi_t RPVMCTruthHists::getJetRoIsAndTracks()
+{
+    return this->getJetRoIsAndTracks(TRACK_BASED_TRGS);
+}
+
+jetroi_tracks_per_roi_t RPVMCTruthHists::getJetRoIsAndTracks(const std::string & chgrpname=TRACK_BASED_TRGS)
+{
+    // The elements to be retrieved from each RoI. The vector 
+    // index corresponds to the RoI index
+    std::vector<const xAOD::Jet*> jets;
+    std::vector<const TrigRoiDescriptor*> roidescrs;
+    std::vector<std::vector<const xAOD::TrackParticle*> > tracks_vector;
+
+    ATH_MSG_DEBUG("|-- Trig::Feature Extraction (through getCombinations method)");
+    const Trig::ChainGroup * chgrp = m_trigDec->getChainGroup(chgrpname);
+    const Trig::FeatureContainer fecont =chgrp->features();
+    const std::vector<Trig::Combination> combfeaturevect = fecont.getCombinations();
+    // Loop over the RoIs??
+    ATH_MSG_DEBUG(" |- Size of the Combination of features vector, i.e. number of RoIs: " 
+            << combfeaturevect.size());  
+    unsigned int iRoI = 0;
+    for( auto & combination : combfeaturevect)
+    {
+        ATH_MSG_DEBUG("  |- Found at RoI #" << iRoI);
+        // Get the Jets
+        updateTriggerJets(combination,jets);
+        // Get the RoIDescriptors
+        updateTriggerRoIs(combination,roidescrs);
+        // Get the tracks
+        updateTrackParticles(combination,tracks_vector);
+        ++iRoI;
+    }
+    return jetroi_tracks_per_roi_t(jetroi_per_roi_t(jets,roidescrs),tracks_vector);
 }
 
 

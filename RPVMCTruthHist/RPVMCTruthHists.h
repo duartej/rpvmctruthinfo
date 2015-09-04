@@ -45,6 +45,8 @@ class McEventCollection;
 
 // Just to avoid writing so long...
 typedef std::pair<std::vector<const xAOD::Jet*>,std::vector<std::vector<const xAOD::TrackParticle*> > > jet_tracks_per_roi_t;
+typedef std::pair<std::vector<const xAOD::Jet*>,std::vector<const TrigRoiDescriptor *> > jetroi_per_roi_t;
+typedef std::pair<jetroi_per_roi_t,std::vector<std::vector<const xAOD::TrackParticle*> > > jetroi_tracks_per_roi_t;
   
 class RPVMCTruthHists : public AthAlgorithm
 {
@@ -89,6 +91,8 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Get the Jet (RoI-based) and the track collections
         jet_tracks_per_roi_t getJetsAndTracks();
         jet_tracks_per_roi_t getJetsAndTracks(const std::string & chgrpname);
+        jetroi_tracks_per_roi_t getJetRoIsAndTracks();
+        jetroi_tracks_per_roi_t getJetRoIsAndTracks(const std::string & chgrpname);
 
         //! Get the list of particles with status 1 tracking-down the vertex (vtx)
         void getParticlesInDetector( const HepMC::GenVertex * vtx, std::vector<const HepMC::GenParticle *> & daugh );
@@ -155,6 +159,8 @@ class RPVMCTruthHists : public AthAlgorithm
         std::vector<float> * m_jetroi_et;
         std::vector<float> * m_jetroi_eta;
         std::vector<float> * m_jetroi_phi;
+        std::vector<float> * m_jetroi_etahalfwidth;
+        std::vector<float> * m_jetroi_phihalfwidth;
 
         //! Tracks in the accepted trigger:
         //! Number of reconstructed tracks in the i-RoI
