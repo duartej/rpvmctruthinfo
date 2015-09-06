@@ -82,8 +82,12 @@ class RPVMCTruthHists : public AthAlgorithm
         int getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
                 const std::vector<const xAOD::Jet*> & jets) const;
 
-        //! Get the index of the RoI (Jet-based) which matches in a dR any of the genpparticles
-        int getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
+        //! Get the index of the RoI (Jet-based) which matches in a dEta x dPhi defined by
+        //! the RoI with any of the genpparticles decaying from the LSP, this genparticles
+        //! should be hadrons and have at least pt > 1 GeV
+        //int getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
+        //        const std::vector<const TrigRoiDescriptor*> & rois) const;
+        std::vector<int> getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
                 const std::vector<const TrigRoiDescriptor*> & rois) const;
         //! Get the displaced-vertex in the event
         std::vector<const HepMC::GenVertex *> getDisplacedVertices(const McEventCollection * const mcColl);

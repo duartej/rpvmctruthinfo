@@ -485,16 +485,16 @@ StatusCode RPVMCTruthHists::execute()
 
         // Trigger info: find the Trigger (jet) RoI with better matching with the eta and
         // phi of the DV-particles
-        const int iJetMatched = getJetRoIdRMatched(charged_partindet_inside1mm,jets);
-        // --> const std::vector<int> iRoIsMatched = getRoIdRMatched(partindet_inside1mm,rois);
+        //const int iJetMatched = getJetRoIdRMatched(charged_partindet_inside1mm,jets);
+        const std::vector<int> iRoIsMatched = getRoIdRMatched(charged_partindet_inside1mm,rois);
         // Keep track if this vertex has associated a Jet-Roi
         // The vector was filled with -1 if there's no match or the index
         // of the current LSP if there is a match
-        //for(auto & iJetIndex: iRoIsMatched)
-        if(iJetMatched != -1)
+        for(auto & iJetIndex: iRoIsMatched)
+        //if(iJetMatched != -1)
         {
-            //(*m_jetroimatched)[iRoIsMatched] = (m_eta->size()-1);
-            (*m_jetroimatched)[iJetMatched] = (m_eta->size()-1);
+            (*m_jetroimatched)[iJetIndex] = (m_eta->size()-1);
+            //(*m_jetroimatched)[iJetMatched] = (m_eta->size()-1);
         }
     }
 
@@ -662,7 +662,8 @@ jet_tracks_per_roi_t RPVMCTruthHists::getJetsAndTracks(const std::string & chgrp
     return jet_tracks_per_roi_t(jets_per_roi,tv_per_roi);
 }
 
-
+// TO BE DEPRECATED!! Use getRoIdRMatched (even if we change to a 0.2 fixed deltaPhi, deltaEta
+// hardcoded values
 int RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
         const std::vector<const xAOD::Jet*> & jets) const
 {
@@ -706,9 +707,11 @@ int RPVMCTruthHists::getJetRoIdRMatched(const std::vector<const HepMC::GenPartic
     return -1;
 }
 
-int RPVMCTruthHists::getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
+std::vector<int> RPVMCTruthHists::getRoIdRMatched(const std::vector<const HepMC::GenParticle*> & particles, 
         const std::vector<const TrigRoiDescriptor*> & rois) const
 {
+    std::vector<int> jet_indices;
+
     ATH_MSG_VERBOSE("Using a RoI collection of " << rois.size() 
             << " elements trying to be matched with a collection of status-1" 
             << " gen particles from the DV.");
@@ -746,11 +749,11 @@ int RPVMCTruthHists::getRoIdRMatched(const std::vector<const HepMC::GenParticle*
                 continue;
             }
             ATH_MSG_VERBOSE("  --> jet matched!");
-            return k;
+            jet_indices.push_back(k);
         }
     }
-    ATH_MSG_DEBUG("Not found any matched roi");
-    return -1;
+    return jet_indices;
+    //ATH_MSG_DEBUG("Not found any matched roi");
 }
 
 std::vector<const HepMC::GenVertex *> RPVMCTruthHists::getDisplacedVertices(const McEventCollection * const mcColl)
