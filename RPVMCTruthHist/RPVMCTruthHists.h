@@ -177,6 +177,13 @@ class RPVMCTruthHists : public AthAlgorithm
         std::vector<float> * m_sumpttracksd0uppercut;
         //! Sum_pt of the reconstructed tracks in the i-RoI with d0 lower than 1mm
         std::vector<float> * m_sumpttracksd0lowercut;
+        //! Sum of hits per RoI for the different subdetectors
+        std::vector<int> * m_jetroi_blayer;
+        std::vector<int> * m_jetroi_pixhits;
+        std::vector<int> * m_jetroi_scthits;
+        std::vector<int> * m_jetroi_trthits;
+        std::vector<int> * m_jetroi_tothits;
+        std::vector<int> * m_jetroi_silhits;
         
         //! Index association between the (Jet-) Roi and the lower 
         //! index of the track set corresponding to that roi:
@@ -197,12 +204,22 @@ class RPVMCTruthHists : public AthAlgorithm
         //! REDUNDANT... Should I?
         std::vector<int> * m_track_tothits;
         std::vector<int> * m_track_silhits;
-        //! track parameters in the perigee
+        //! radius of first hit
+        std::vector<float> * m_track_radiusOfFirstHit;
+        //! track parameters in the perigee, $d_{0}$, $\sigma_{d_{0}}$, 
+        //! $z_0$,  $\phi_0$, $\theta$, $q/p$
         std::vector<float> * m_track_d0;
+        std::vector<float> * m_track_Dd0;
         std::vector<float> * m_track_z0;
+        std::vector<float> * m_track_phi0;
+        std::vector<float> * m_track_theta;
+        std::vector<float> * m_track_qOverp;
+        //! Track-particle kinematics
         std::vector<float> * m_track_pt;
         std::vector<float> * m_track_eta;
         std::vector<float> * m_track_phi;
+        //! Track quality
+        std::vector<float> * m_track_chiSquaredNorm;
     
         // Auxiliary member to manage memory (de)allocation
         std::vector<std::vector<int>** > m_regIPointers;

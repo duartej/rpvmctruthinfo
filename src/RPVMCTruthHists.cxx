@@ -78,6 +78,12 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_ntracksd0lowercut(0),
     m_sumpttracksd0uppercut(0),
     m_sumpttracksd0lowercut(0),
+    m_jetroi_blayer(0),
+    m_jetroi_pixhits(0),
+    m_jetroi_scthits(0),
+    m_jetroi_trthits(0),
+    m_jetroi_tothits(0),
+    m_jetroi_silhits(0),
     m_tracktoroi_index(0),
     m_track_blayer(0),
     m_track_pixhits(0),
@@ -85,11 +91,17 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_track_trthits(0),
     m_track_tothits(0),
     m_track_silhits(0),
+    m_track_radiusOfFirstHit(0),
     m_track_d0(0),
+    m_track_Dd0(0),
     m_track_z0(0),
+    m_track_phi0(0),
+    m_track_theta(0),
+    m_track_qOverp(0),
     m_track_pt(0),
     m_track_eta(0),
     m_track_phi(0),
+    m_track_chiSquaredNorm(0),
     m_tree(0),
     m_trigDec("Trig::TrigDecisionTool/TrigDecisionTool")
 {
@@ -114,6 +126,13 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_regIPointers.push_back(&m_ntracks);
     m_regIPointers.push_back(&m_ntracksd0uppercut);
     m_regIPointers.push_back(&m_ntracksd0lowercut);
+    
+    m_regIPointers.push_back(&m_jetroi_blayer);
+    m_regIPointers.push_back(&m_jetroi_pixhits);
+    m_regIPointers.push_back(&m_jetroi_scthits);
+    m_regIPointers.push_back(&m_jetroi_trthits);
+    m_regIPointers.push_back(&m_jetroi_tothits);
+    m_regIPointers.push_back(&m_jetroi_silhits);
     
     m_regIPointers.push_back(&m_tracktoroi_index);
     m_regIPointers.push_back(&m_track_blayer);
@@ -148,13 +167,18 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
 
     m_regFPointers.push_back(&m_sumpttracksd0uppercut);
     m_regFPointers.push_back(&m_sumpttracksd0lowercut);
-
+    
     m_regFPointers.push_back(&m_track_d0);
+    m_regFPointers.push_back(&m_track_Dd0);
     m_regFPointers.push_back(&m_track_z0);
+    m_regFPointers.push_back(&m_track_phi0);
+    m_regFPointers.push_back(&m_track_theta);
+    m_regFPointers.push_back(&m_track_qOverp);
     m_regFPointers.push_back(&m_track_pt);
     m_regFPointers.push_back(&m_track_eta);
     m_regFPointers.push_back(&m_track_phi);
-
+    m_regFPointers.push_back(&m_track_chiSquaredNorm);
+    m_regFPointers.push_back(&m_track_radiusOfFirstHit);
 }
 
 /// --------------------------------------------------------------------
@@ -235,21 +259,36 @@ StatusCode RPVMCTruthHists::initialize()
     m_tree->Branch("sumpttracksd0lowercut",&m_sumpttracksd0lowercut);
 
     // tracks hits per RoI
-    m_tree->Branch("jetroi_blayer",&m_track_blayer);
-    m_tree->Branch("jetroi_pixhits",&m_track_pixhits);
-    m_tree->Branch("jetroi_scthits",&m_track_scthits);
-    m_tree->Branch("jetroi_trthits",&m_track_trthits);
-    m_tree->Branch("jetroi_silhits",&m_track_silhits);
-    m_tree->Branch("jetroi_tothits",&m_track_tothits);
+    m_tree->Branch("jetroi_blayer", &m_jetroi_blayer);
+    m_tree->Branch("jetroi_pixhits",&m_jetroi_pixhits);
+    m_tree->Branch("jetroi_scthits",&m_jetroi_scthits);
+    m_tree->Branch("jetroi_trthits",&m_jetroi_trthits);
+    m_tree->Branch("jetroi_silhits",&m_jetroi_silhits);
+    m_tree->Branch("jetroi_tothits",&m_jetroi_tothits);
     
     m_tree->Branch("tracktoroi_index",&m_tracktoroi_index);
 
-    // tracks:: parameters at perigee
+    // tracks:: parameters at perigee, track-particle and quality
     m_tree->Branch("track_d0",&m_track_d0);
+    m_tree->Branch("track_sigma_d0",&m_track_Dd0);
     m_tree->Branch("track_z0",&m_track_z0);
+    m_tree->Branch("track_phi0",&m_track_phi0);
+    m_tree->Branch("track_theta",&m_track_theta);
+    m_tree->Branch("track_qOverp",&m_track_qOverp);
     m_tree->Branch("track_pt",&m_track_pt);
     m_tree->Branch("track_eta",&m_track_eta);
     m_tree->Branch("track_phi",&m_track_phi);
+    m_tree->Branch("track_chi2Norm",&m_track_chiSquaredNorm);
+    // tracks hits per track
+    m_tree->Branch("track_blayer",&m_track_blayer);
+    m_tree->Branch("track_pixhits",&m_track_pixhits);
+    m_tree->Branch("track_scthits",&m_track_scthits);
+    m_tree->Branch("track_trthits",&m_track_trthits);
+    m_tree->Branch("track_silhits",&m_track_silhits);
+    m_tree->Branch("track_tothits",&m_track_tothits);
+    
+    m_tree->Branch("track_radiusOfFirstHit",&m_track_radiusOfFirstHit);
+    
 
     //--- The triggers to be checked
     sc = m_trigDec.retrieve();
@@ -306,6 +345,7 @@ StatusCode RPVMCTruthHists::execute()
     // -- Be sure the number of RoIs and Jets is the same
     if( jets.size() != rois.size() )
     {
+        deallocTreeVars();
         ATH_MSG_ERROR("Inconsistent number of RoIDescriptors and Jets!");
         return StatusCode::FAILURE;
     }
@@ -374,15 +414,37 @@ StatusCode RPVMCTruthHists::execute()
             track->summaryValue(ntrthits, xAOD::numberOfTRTHits);
             ntrthits_roi += ntrthits;
 
-            sihits_roi  += (npixhits+nscthits);
-            tothits_roi += (npixhits+nscthits+ntrthits);
-    
-            // Track parameters at the perigee
+            const uint8_t sihits = (npixhits+nscthits);
+            sihits_roi += sihits;
+            const uint8_t tothits = (npixhits+nscthits+ntrthits);
+            tothits_roi += tothits;
+            
+            // Track hits
+            m_track_blayer->push_back(nblayer);
+            m_track_pixhits->push_back(npixhits);
+            m_track_scthits->push_back(nscthits);
+            m_track_trthits->push_back(ntrthits);
+            m_track_silhits->push_back(sihits);
+            m_track_tothits->push_back(tothits);
+
+            m_track_radiusOfFirstHit->push_back(track->radiusOfFirstHit());
+
+            // Track parameters at the perigee: Note that the default transverse
+            // and longitudinal paramaters are defined with reespect to the beamline:
+            // https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/InDetTrackingDC14#Impact_parameters_z0_d0_definiti
+            //significance d0
             m_track_d0->push_back(track->d0());
+            m_track_Dd0->push_back(sqrt(track->definingParametersCovMatrix()(0,0)));
             m_track_z0->push_back(track->z0());
+            m_track_phi0->push_back(track->phi0());
+            m_track_theta->push_back(track->theta());        
+            m_track_qOverp->push_back(track->qOverP()*Gaudi::Units::GeV/Gaudi::Units::MeV);
+            //! Track particle kinematic variables
             m_track_pt->push_back(track->pt()*Gaudi::Units::MeV/Gaudi::Units::GeV);
             m_track_eta->push_back(track->eta());
             m_track_phi->push_back(track->phi());
+            //! Quality
+            m_track_chiSquaredNorm->push_back(track->chiSquared()/track->numberDoF());
         }
         // Number of recotracks in this RoI
         m_ntracks->push_back(tracks.size());
@@ -392,12 +454,12 @@ StatusCode RPVMCTruthHists::execute()
         m_ntracksd0lowercut->push_back(ntracksd0low);
         m_sumpttracksd0lowercut->push_back(sumptd0low*Gaudi::Units::MeV/Gaudi::Units::GeV);
         // added-up hits per Roi
-        m_track_blayer->push_back(nblayer_roi);
-        m_track_pixhits->push_back(npixhits_roi);
-        m_track_scthits->push_back(nscthits_roi);
-        m_track_trthits->push_back(ntrthits_roi);
-        m_track_silhits->push_back(sihits_roi);
-        m_track_tothits->push_back(tothits_roi);
+        m_jetroi_blayer->push_back(nblayer_roi);
+        m_jetroi_pixhits->push_back(npixhits_roi);
+        m_jetroi_scthits->push_back(nscthits_roi);
+        m_jetroi_trthits->push_back(ntrthits_roi);
+        m_jetroi_silhits->push_back(sihits_roi);
+        m_jetroi_tothits->push_back(tothits_roi);
         // Update the next first index for the next RoI
         indexfirsttrack += tracks.size();
 
