@@ -25,6 +25,8 @@
 
 #include "TrigSteeringEvent/TrigRoiDescriptor.h"
 
+#include "TrigParticle/TrigEFBjetContainer.h"
+
 #include "FourMom/P4EEtaPhiM.h"
 #include "FourMom/P4PxPyPzE.h"
 #include "FourMomUtils/P4Helpers.h"
@@ -84,6 +86,11 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_jetroi_trthits(0),
     m_jetroi_tothits(0),
     m_jetroi_silhits(0),
+    m_jetroi_unusedhits(0),
+    m_jetroi_unusedhits_fraction(0),
+    m_jetroi_mespixhits(0),
+    m_jetroi_messcthits(0),
+    m_jetroi_mestrthits(0),
     m_tracktoroi_index(0),
     m_track_blayer(0),
     m_track_pixhits(0),
@@ -134,6 +141,11 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_regIPointers.push_back(&m_jetroi_tothits);
     m_regIPointers.push_back(&m_jetroi_silhits);
     
+    m_regIPointers.push_back(&m_jetroi_unusedhits);
+    m_regIPointers.push_back(&m_jetroi_mespixhits);
+    m_regIPointers.push_back(&m_jetroi_messcthits);
+    m_regIPointers.push_back(&m_jetroi_mestrthits);
+    
     m_regIPointers.push_back(&m_tracktoroi_index);
     m_regIPointers.push_back(&m_track_blayer);
     m_regIPointers.push_back(&m_track_pixhits);
@@ -158,6 +170,8 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_regFPointers.push_back(&m_genpfromdv_vx);
     m_regFPointers.push_back(&m_genpfromdv_vy);
     m_regFPointers.push_back(&m_genpfromdv_vz);
+    
+    m_regFPointers.push_back(&m_jetroi_unusedhits_fraction);
     
     m_regFPointers.push_back(&m_jetroi_et);
     m_regFPointers.push_back(&m_jetroi_eta);
@@ -266,6 +280,12 @@ StatusCode RPVMCTruthHists::initialize()
     m_tree->Branch("jetroi_silhits",&m_jetroi_silhits);
     m_tree->Branch("jetroi_tothits",&m_jetroi_tothits);
     
+    m_tree->Branch("jetroi_unusedhits",&m_jetroi_unusedhits);
+    m_tree->Branch("jetroi_unusedhits_fraction",&m_jetroi_unusedhits_fraction);
+    m_tree->Branch("jetroi_mespixhits",&m_jetroi_pixhits);
+    m_tree->Branch("jetroi_messcthits",&m_jetroi_scthits);
+    m_tree->Branch("jetroi_mestrthits",&m_jetroi_trthits);
+    
     m_tree->Branch("tracktoroi_index",&m_tracktoroi_index);
 
     // tracks:: parameters at perigee, track-particle and quality
@@ -337,15 +357,15 @@ StatusCode RPVMCTruthHists::execute()
     const std::vector<const xAOD::Jet *> jets  = jetrois_and_tracks.first.first;
     std::vector<const TrigRoiDescriptor*> rois = jetrois_and_tracks.first.second;
     
-    // Allocate Tree-variables
-    allocTreeVars();
+    // Prepare to fill the event (including Tree-variables allocation)
+    this->allocVars();
     
     //============================================================
     // RoI-related info 
     // -- Be sure the number of RoIs and Jets is the same
     if( jets.size() != rois.size() )
     {
-        deallocTreeVars();
+        deallocVars();
         ATH_MSG_ERROR("Inconsistent number of RoIDescriptors and Jets!");
         return StatusCode::FAILURE;
     }
@@ -366,6 +386,15 @@ StatusCode RPVMCTruthHists::execute()
         {
             m_jetroi_phihalfwidth->push_back( (rois[k])->phiPlus()-(rois[k])->phi() );
         }
+        // Hit related stuff
+        // Note that the m_trigefbjet made with the TrigDvFex class has getters 
+        // with do not correspond to their original meaning
+        const TrigEFBjet * trbj = m_trigefbjet_v[k];
+        m_jetroi_unusedhits->push_back(trbj->xIP3D());
+        m_jetroi_unusedhits_fraction->push_back(trbj->xCHI2());
+        m_jetroi_mespixhits->push_back(trbj->xComb());
+        m_jetroi_messcthits->push_back(trbj->xIP1D());
+        m_jetroi_mestrthits->push_back(trbj->xIP2D());
     }
     // Trigger info:: Tracks of the track-based triggers
     const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = jetrois_and_tracks.second;
@@ -479,7 +508,7 @@ StatusCode RPVMCTruthHists::execute()
     StatusCode sc = evtStore()->retrieve(mcColl, m_mcCollName);
     if(sc.isFailure()) 
 	{
-        deallocTreeVars();
+        this->deallocVars();
         ATH_MSG_ERROR("unable to retrieve MC coll");
         return StatusCode::FAILURE;
     }
@@ -562,7 +591,7 @@ StatusCode RPVMCTruthHists::execute()
 
     // Persistency and freeing memory
     m_tree->Fill();
-    deallocTreeVars();
+    this->deallocVars();
   	
 	return StatusCode::SUCCESS;
 }
@@ -625,6 +654,33 @@ void RPVMCTruthHists::updateTriggerRoIs(const Trig::Combination & combination,st
     }
 }
 
+void RPVMCTruthHists::updateTrigBjetContainer(const Trig::Combination & combination)
+{
+    std::vector<Trig::Feature<TrigEFBjetContainer> > tbjfeaturevect = combination.get<TrigEFBjetContainer>("EFBjetDvFex");
+    if( tbjfeaturevect.empty() )
+    {
+        ATH_MSG_DEBUG("Not found TrigEFBjetContainer available instance)");
+        return;
+    }
+
+    ATH_MSG_DEBUG("   * " << tbjfeaturevect.size() << " TrigEFBjetContainer-collections");
+    for(size_t i = 0; i < tbjfeaturevect.size(); ++i)
+    {
+        const TrigEFBjetContainer * trigefbjet_cont = tbjfeaturevect[i].cptr();
+        if( trigefbjet_cont->size() != 1)
+        {
+            ATH_MSG_WARNING("TrigEFBjetContainer instance should contain 1-element"
+                    << " per RoI, instead contains " << tbjfeaturevect.size() );
+           //return;
+        }
+        ATH_MSG_DEBUG("    with "<< trigefbjet_cont->size() << " TrigEFBjets");
+        for(unsigned int k = 0; k < trigefbjet_cont->size(); ++k)
+        {
+            m_trigefbjet_v.push_back((*trigefbjet_cont)[k]);
+        }
+    }
+}
+
 void RPVMCTruthHists::updateTrackParticles(const Trig::Combination & combination, 
         std::vector<std::vector<const xAOD::TrackParticle*> > & trackcollection_vector)
 {
@@ -683,8 +739,12 @@ jetroi_tracks_per_roi_t RPVMCTruthHists::getJetRoIsAndTracks(const std::string &
         updateTriggerRoIs(combination,roidescrs);
         // Get the tracks
         updateTrackParticles(combination,tracks_vector);
+        // Also get the TrigEFBjetContainer whichs contains the hits information
+        // of the roi
+        updateTrigBjetContainer(combination);
         ++iRoI;
     }
+
     return jetroi_tracks_per_roi_t(jetroi_per_roi_t(jets,roidescrs),tracks_vector);
 }
 
@@ -952,6 +1012,23 @@ void RPVMCTruthHists::storeGenParticlesInfo(const std::vector<const HepMC::GenPa
 }
 
         
+void RPVMCTruthHists::allocVars()
+{
+    // Resetting getter containers 
+    m_trigefbjet_v.clear();
+    
+    // Allocating TTree variables
+    this->allocTreeVars();
+}
+
+void RPVMCTruthHists::deallocVars()
+{
+    // --- Actually nothing to do with getter containers ...
+    //     (but it could be a placeholder for future inclusions)    
+    // and the TTree-related variables    
+    this->deallocTreeVars();
+}
+
 void RPVMCTruthHists::allocTreeVars()
 {
     // FIXME:: return a bool checking if everything was ok?

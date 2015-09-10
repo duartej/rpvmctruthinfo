@@ -15,6 +15,7 @@ private
 use AtlasHepMC        AtlasHepMC-*        External
 use McParticleUtils   McParticleUtils-*   PhysicsAnalysis/TruthParticleID
 use GeneratorObjects  GeneratorObjects-*  Generators
+use TrigParticle      TrigParticle-*      Trigger/TrigEvent
 use xAODJet           xAODJet-*           Event/xAOD
 use xAODBase          xAODBase-*          Event/xAOD
 use xAODTracking      xAODTracking-*      Event/xAOD

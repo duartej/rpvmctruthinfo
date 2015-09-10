@@ -28,6 +28,8 @@ namespace HepMC
     class GenVertex;
 }
 
+class TrigEFBjet;
+
 namespace HepPDT
 {
     class ParticleDataTable; 
@@ -77,6 +79,8 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Update the track collection reconstructed in the RoI 
         void updateTrackParticles(const Trig::Combination & comb,
                 std::vector<std::vector<const xAOD::TrackParticle*> > & tracks_vector);
+        //! Update the TrigEFBjet collection reconstructed in the RoI 
+        void updateTrigBjetContainer(const Trig::Combination & comb);
 
         //! Get the index of the Jet (RoI-based) which matches in a dR any of the genp particles
         int getJetRoIdRMatched(const std::vector<const HepMC::GenParticle*> & genp,
@@ -110,6 +114,11 @@ class RPVMCTruthHists : public AthAlgorithm
         //! the dv (<1mm)
         void storeGenParticlesInfo(const std::vector<const HepMC::GenParticle*> & particles);
 
+        //! Auxiliary method to reset features collection and (de)allocate
+        //! memory of the TTree used variables (calling (de)allocTreeVars() methods)
+        void allocVars();
+        void deallocVars();
+        
         //! Auxiliary method to deallocate memory of the TTree used variables
         void allocTreeVars();
         void deallocTreeVars();
@@ -117,6 +126,9 @@ class RPVMCTruthHists : public AthAlgorithm
 		int m_LLP_PDGID;
         std::string m_mcCollName;
         std::string m_streamName;
+        // Relevant containers from the trigger features
+        std::vector<const TrigEFBjet*>  m_trigefbjet_v;
+        // Some services
         ServiceHandle<ITHistSvc> m_tHistSvc;
         const HepPDT::ParticleDataTable * m_pdt;
         //! LSP decay vertex
@@ -184,13 +196,20 @@ class RPVMCTruthHists : public AthAlgorithm
         std::vector<int> * m_jetroi_trthits;
         std::vector<int> * m_jetroi_tothits;
         std::vector<int> * m_jetroi_silhits;
+        //! Unused hits per RoI
+        std::vector<int> * m_jetroi_unusedhits;
+        //! Fraction ofuUnused hits per RoI (unused/total)
+        std::vector<float> * m_jetroi_unusedhits_fraction;        
+        //! Number of PRDs (hits) measured (by detector)
+        std::vector<int> * m_jetroi_mespixhits;               
+        std::vector<int> * m_jetroi_messcthits;               
+        std::vector<int> * m_jetroi_mestrthits;
         
         //! Index association between the (Jet-) Roi and the lower 
         //! index of the track set corresponding to that roi:
         //!        m_tracktoroi_index[k-1]= r
         //!        m_tracktoroi_index[k]  = s
-        //! means
-        //!   the jet-roi "m_jetroi_xx[k]" reconstructed the set 
+        //!  means the jet-roi "m_jetroi_xx[k]" reconstructed the set 
         //!   of tracks: m_track_yy[r+1],...,m_track_yy[s]
         std::vector<int> * m_tracktoroi_index;
         
