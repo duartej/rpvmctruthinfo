@@ -88,9 +88,9 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_jetroi_silhits(0),
     m_jetroi_unusedhits(0),
     m_jetroi_unusedhits_fraction(0),
-    m_jetroi_mespixhits(0),
-    m_jetroi_messcthits(0),
-    m_jetroi_mestrthits(0),
+    m_jetroi_measpixhits(0),
+    m_jetroi_measscthits(0),
+    m_jetroi_meastrthits(0),
     m_tracktoroi_index(0),
     m_track_blayer(0),
     m_track_pixhits(0),
@@ -142,9 +142,9 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_regIPointers.push_back(&m_jetroi_silhits);
     
     m_regIPointers.push_back(&m_jetroi_unusedhits);
-    m_regIPointers.push_back(&m_jetroi_mespixhits);
-    m_regIPointers.push_back(&m_jetroi_messcthits);
-    m_regIPointers.push_back(&m_jetroi_mestrthits);
+    m_regIPointers.push_back(&m_jetroi_measpixhits);
+    m_regIPointers.push_back(&m_jetroi_measscthits);
+    m_regIPointers.push_back(&m_jetroi_meastrthits);
     
     m_regIPointers.push_back(&m_tracktoroi_index);
     m_regIPointers.push_back(&m_track_blayer);
@@ -282,9 +282,9 @@ StatusCode RPVMCTruthHists::initialize()
     
     m_tree->Branch("jetroi_unusedhits",&m_jetroi_unusedhits);
     m_tree->Branch("jetroi_unusedhits_fraction",&m_jetroi_unusedhits_fraction);
-    m_tree->Branch("jetroi_mespixhits",&m_jetroi_pixhits);
-    m_tree->Branch("jetroi_messcthits",&m_jetroi_scthits);
-    m_tree->Branch("jetroi_mestrthits",&m_jetroi_trthits);
+    m_tree->Branch("jetroi_measpixhits",&m_jetroi_measpixhits);
+    m_tree->Branch("jetroi_measscthits",&m_jetroi_measscthits);
+    m_tree->Branch("jetroi_meastrthits",&m_jetroi_meastrthits);
     
     m_tree->Branch("tracktoroi_index",&m_tracktoroi_index);
 
@@ -392,9 +392,9 @@ StatusCode RPVMCTruthHists::execute()
         const TrigEFBjet * trbj = m_trigefbjet_v[k];
         m_jetroi_unusedhits->push_back(trbj->xIP3D());
         m_jetroi_unusedhits_fraction->push_back(trbj->xCHI2());
-        m_jetroi_mespixhits->push_back(trbj->xComb());
-        m_jetroi_messcthits->push_back(trbj->xIP1D());
-        m_jetroi_mestrthits->push_back(trbj->xIP2D());
+        m_jetroi_measpixhits->push_back(trbj->xComb());
+        m_jetroi_measscthits->push_back(trbj->xIP1D());
+        m_jetroi_meastrthits->push_back(trbj->xIP2D());
     }
     // Trigger info:: Tracks of the track-based triggers
     const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = jetrois_and_tracks.second;

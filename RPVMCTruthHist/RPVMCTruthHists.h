@@ -201,9 +201,9 @@ class RPVMCTruthHists : public AthAlgorithm
         //! Fraction ofuUnused hits per RoI (unused/total)
         std::vector<float> * m_jetroi_unusedhits_fraction;        
         //! Number of PRDs (hits) measured (by detector)
-        std::vector<int> * m_jetroi_mespixhits;               
-        std::vector<int> * m_jetroi_messcthits;               
-        std::vector<int> * m_jetroi_mestrthits;
+        std::vector<int> * m_jetroi_measpixhits;               
+        std::vector<int> * m_jetroi_measscthits;               
+        std::vector<int> * m_jetroi_meastrthits;
         
         //! Index association between the (Jet-) Roi and the lower 
         //! index of the track set corresponding to that roi:
