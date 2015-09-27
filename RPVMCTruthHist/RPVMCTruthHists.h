@@ -198,8 +198,13 @@ class RPVMCTruthHists : public AthAlgorithm
         std::vector<int> * m_jetroi_silhits;
         //! Unused hits per RoI
         std::vector<int> * m_jetroi_unusedhits;
-        //! Fraction ofuUnused hits per RoI (unused/total)
+        //! Fraction of unused hits per RoI (unused/total)
         std::vector<float> * m_jetroi_unusedhits_fraction;        
+        //! Fraction of unused hits per RoI per subdetector
+        std::vector<float> * m_jetroi_unusedhits_pixel_fraction;        
+        std::vector<float> * m_jetroi_unusedhits_blayer_fraction;        
+        std::vector<float> * m_jetroi_unusedhits_sct_fraction;        
+        std::vector<float> * m_jetroi_unusedhits_trt_fraction;        
         //! Number of PRDs (hits) measured (by detector)
         std::vector<int> * m_jetroi_measpixhits;               
         std::vector<int> * m_jetroi_measscthits;               

@@ -88,6 +88,10 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_jetroi_silhits(0),
     m_jetroi_unusedhits(0),
     m_jetroi_unusedhits_fraction(0),
+    m_jetroi_unusedhits_pixel_fraction(0),
+    m_jetroi_unusedhits_blayer_fraction(0),
+    m_jetroi_unusedhits_sct_fraction(0),
+    m_jetroi_unusedhits_trt_fraction(0),
     m_jetroi_measpixhits(0),
     m_jetroi_measscthits(0),
     m_jetroi_meastrthits(0),
@@ -172,6 +176,10 @@ RPVMCTruthHists::RPVMCTruthHists(const std::string& name,
     m_regFPointers.push_back(&m_genpfromdv_vz);
     
     m_regFPointers.push_back(&m_jetroi_unusedhits_fraction);
+    m_regFPointers.push_back(&m_jetroi_unusedhits_pixel_fraction);
+    m_regFPointers.push_back(&m_jetroi_unusedhits_blayer_fraction);
+    m_regFPointers.push_back(&m_jetroi_unusedhits_sct_fraction);
+    m_regFPointers.push_back(&m_jetroi_unusedhits_trt_fraction);
     
     m_regFPointers.push_back(&m_jetroi_et);
     m_regFPointers.push_back(&m_jetroi_eta);
@@ -282,6 +290,10 @@ StatusCode RPVMCTruthHists::initialize()
     
     m_tree->Branch("jetroi_unusedhits",&m_jetroi_unusedhits);
     m_tree->Branch("jetroi_unusedhits_fraction",&m_jetroi_unusedhits_fraction);
+    m_tree->Branch("jetroi_unusedhits_pixel_fraction",&m_jetroi_unusedhits_pixel_fraction);
+    m_tree->Branch("jetroi_unusedhits_blayer_fraction",&m_jetroi_unusedhits_blayer_fraction);
+    m_tree->Branch("jetroi_unusedhits_sct_fraction",&m_jetroi_unusedhits_sct_fraction);
+    m_tree->Branch("jetroi_unusedhits_trt_fraction",&m_jetroi_unusedhits_trt_fraction);
     m_tree->Branch("jetroi_measpixhits",&m_jetroi_measpixhits);
     m_tree->Branch("jetroi_measscthits",&m_jetroi_measscthits);
     m_tree->Branch("jetroi_meastrthits",&m_jetroi_meastrthits);
@@ -388,13 +400,34 @@ StatusCode RPVMCTruthHists::execute()
         }
         // Hit related stuff
         // Note that the m_trigefbjet made with the TrigDvFex class has getters 
-        // with do not correspond to their original meaning
+        // with do not correspond to their original meaning --> FIXME : to a function!!
         const TrigEFBjet * trbj = m_trigefbjet_v[k];
-        m_jetroi_unusedhits->push_back(trbj->xIP3D());
-        m_jetroi_unusedhits_fraction->push_back(trbj->xCHI2());
-        m_jetroi_measpixhits->push_back(trbj->xComb());
-        m_jetroi_measscthits->push_back(trbj->xIP1D());
-        m_jetroi_meastrthits->push_back(trbj->xIP2D());
+        const unsigned int meas_pixel        = trbj->prmVtx();
+        const unsigned int unusedhits_pixel  = trbj->xComb();
+        const unsigned int meas_sct          = trbj->xIP1D();
+        const unsigned int unusedhits_sct    = trbj->xIP2D();
+        const unsigned int meas_trt          = trbj->xIP3D();
+        const unsigned int unusedhits_trt    = trbj->xSV();
+
+        const unsigned int unusedhits_id     = (unusedhits_pixel+unusedhits_sct+unusedhits_trt);
+        const unsigned int meas_id           = (meas_pixel+meas_sct+meas_trt);
+        
+        const float unusedhits_pixel_frac = (meas_pixel ? ((float)unusedhits_pixel)/((float)meas_pixel) : 0.0);
+        const float unusedhits_blayer_frac= trbj->xEVtx();
+        const float unusedhits_sct_frac   = (meas_sct ? ((float)unusedhits_sct)/((float)meas_sct) : 0.0);
+        const float unusedhits_trt_frac   = (meas_trt ? ((float)unusedhits_trt)/((float)meas_trt) : 0.0);
+
+        const float unusedhits_id_frac    = (meas_id ? ((float)unusedhits_id)/((float)meas_id) : 0.0);
+
+        m_jetroi_unusedhits->push_back(unusedhits_id);
+        m_jetroi_measpixhits->push_back(meas_pixel);
+        m_jetroi_measscthits->push_back(meas_sct);
+        m_jetroi_meastrthits->push_back(meas_trt);
+        m_jetroi_unusedhits_fraction->push_back(unusedhits_id_frac);
+        m_jetroi_unusedhits_pixel_fraction->push_back(unusedhits_pixel_frac);
+        m_jetroi_unusedhits_blayer_fraction->push_back(unusedhits_blayer_frac);
+        m_jetroi_unusedhits_sct_fraction->push_back(unusedhits_sct_frac);
+        m_jetroi_unusedhits_trt_fraction->push_back(unusedhits_trt_frac);
     }
     // Trigger info:: Tracks of the track-based triggers
     const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = jetrois_and_tracks.second;
