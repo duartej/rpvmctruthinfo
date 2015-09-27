@@ -407,10 +407,10 @@ StatusCode RPVMCTruthHists::execute()
         const unsigned int meas_sct          = trbj->xIP1D();
         const unsigned int unusedhits_sct    = trbj->xIP2D();
         const unsigned int meas_trt          = trbj->xIP3D();
-        const unsigned int unusedhits_trt    = trbj->xSV();
+        const unsigned int unusedhits_trt    = trbj->xChi2();
 
-        const unsigned int unusedhits_id     = (unusedhits_pixel+unusedhits_sct+unusedhits_trt);
         const unsigned int meas_id           = (meas_pixel+meas_sct+meas_trt);
+        const unsigned int unusedhits_id     = (unusedhits_pixel+unusedhits_sct+unusedhits_trt);
         
         const float unusedhits_pixel_frac = (meas_pixel ? ((float)unusedhits_pixel)/((float)meas_pixel) : 0.0);
         const float unusedhits_blayer_frac= trbj->xEVtx();
@@ -420,14 +420,15 @@ StatusCode RPVMCTruthHists::execute()
         const float unusedhits_id_frac    = (meas_id ? ((float)unusedhits_id)/((float)meas_id) : 0.0);
 
         m_jetroi_unusedhits->push_back(unusedhits_id);
-        m_jetroi_measpixhits->push_back(meas_pixel);
-        m_jetroi_measscthits->push_back(meas_sct);
-        m_jetroi_meastrthits->push_back(meas_trt);
         m_jetroi_unusedhits_fraction->push_back(unusedhits_id_frac);
         m_jetroi_unusedhits_pixel_fraction->push_back(unusedhits_pixel_frac);
         m_jetroi_unusedhits_blayer_fraction->push_back(unusedhits_blayer_frac);
         m_jetroi_unusedhits_sct_fraction->push_back(unusedhits_sct_frac);
         m_jetroi_unusedhits_trt_fraction->push_back(unusedhits_trt_frac);
+        
+        m_jetroi_measpixhits->push_back(meas_pixel);
+        m_jetroi_measscthits->push_back(meas_sct);
+        m_jetroi_meastrthits->push_back(meas_trt);
     }
     // Trigger info:: Tracks of the track-based triggers
     const std::vector<std::vector<const xAOD::TrackParticle *> > tracks_per_roi = jetrois_and_tracks.second;
