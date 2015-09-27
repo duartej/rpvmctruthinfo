@@ -407,7 +407,7 @@ StatusCode RPVMCTruthHists::execute()
         const unsigned int meas_sct          = trbj->xIP1D();
         const unsigned int unusedhits_sct    = trbj->xIP2D();
         const unsigned int meas_trt          = trbj->xIP3D();
-        const unsigned int unusedhits_trt    = trbj->xChi2();
+        const unsigned int unusedhits_trt    = trbj->xCHI2();
 
         const unsigned int meas_id           = (meas_pixel+meas_sct+meas_trt);
         const unsigned int unusedhits_id     = (unusedhits_pixel+unusedhits_sct+unusedhits_trt);
